@@ -1,0 +1,1697 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>نظام إدارة المعاهد القرآنية المغلقة</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: 'Cairo', sans-serif; overflow-x: hidden; }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+    .header-logo { width: 45px; height: 45px; object-fit: cover; border-radius: 8px; border: 2px solid #fbbf24; }
+    @media print {
+      body { background: white; color: black; }
+      header, footer, button, select, input, .no-print { display: none !important; }
+      .print-card { border: 1px solid #ccc; box-shadow: none; padding: 16px; margin-bottom: 20px; page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
+
+  <!-- مؤشر التحميل General Loader -->
+  <div id="main-loader" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex flex-col items-center justify-center hidden p-4">
+    <div class="animate-spin rounded-full h-14 w-14 border-t-4 border-b-4 border-indigo-600 mb-4"></div>
+    <span class="text-white text-sm sm:text-lg font-semibold text-center">جاري مزامنة وتحديث البيانات...</span>
+  </div>
+
+  <!-- الهيدر الرئيسي -->
+  <header class="bg-slate-900 text-white shadow-lg py-3 px-4 sm:px-6 flex justify-between items-center sticky top-0 z-40 flex-wrap gap-2">
+    <div class="flex items-center gap-3">
+      <img src="https://cdn.jsdelivr.net/gh/ahmdthanwyt-dotcom/school-logo/WhatsApp%20Image%202026-04-07%20at%204.51.23%20AM.jpeg"
+           class="header-logo" onerror="this.style.display='none'">
+      <div>
+        <h1 class="text-sm sm:text-lg font-bold tracking-wide">نظام إدارة المعاهد القرآنية المغلقة</h1>
+        <p class="text-[10px] sm:text-xs text-slate-400" id="header-user-info">جاري التحقق من الجلسة...</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-1.5 sm:gap-2">
+      <button onclick="goToHome()" class="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all shadow flex items-center gap-1.5 cursor-pointer">
+        <i class="fa-solid fa-house"></i> <span>البوابة الرئيسية</span>
+      </button>
+      <button id="change-pass-btn" onclick="openChangePasswordModal()" class="bg-slate-800 hover:bg-slate-700 text-white px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all shadow hidden flex items-center gap-1">
+        <i class="fa-solid fa-key"></i> <span class="hidden xs:inline">كلمة المرور</span>
+      </button>
+      <button id="logout-btn" onclick="logout()" class="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all shadow hidden flex items-center gap-1.5">
+        <i class="fa-solid fa-power-off"></i> خروج
+      </button>
+    </div>
+  </header>
+
+  <main class="flex-grow container mx-auto p-3 sm:p-4 md:p-6 max-w-7xl">
+    
+    <!-- نافذة تعديل بيانات الطالب من المشرف -->
+    <div id="edit-student-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl p-5 sm:p-6 w-full max-w-md shadow-2xl border space-y-3">
+        <h3 class="font-bold text-slate-800 border-b pb-2 text-sm"><i class="fa-solid fa-user-pen text-indigo-600"></i> تعديل بيانات ومستوى حفظ الطالب</h3>
+        <div class="space-y-3 text-xs">
+          <input type="hidden" id="edit-std-id">
+          <div>
+            <label class="block font-semibold text-slate-600 mb-1">اسم الطالب الكامل</label>
+            <input type="text" id="edit-std-name" class="w-full p-2.5 border rounded-xl outline-none font-bold">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-600 mb-1">أين وصل بالحفظ (الجزء / السورة / الصفحة)</label>
+            <input type="text" id="edit-std-progress" placeholder="مثال: الجزء 7 - سورة المائدة" class="w-full p-2.5 border rounded-xl outline-none font-bold text-indigo-900">
+          </div>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button onclick="closeEditStudentModal()" class="bg-slate-200 text-slate-700 text-xs font-bold px-4 py-2 rounded-xl">إلغاء</button>
+          <button onclick="submitEditStudent()" class="bg-indigo-600 text-white text-xs font-bold px-4 py-2 rounded-xl">حفظ التحديث</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- نافذة تغيير كلمة المرور -->
+    <div id="password-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl p-5 sm:p-6 w-full max-w-sm shadow-2xl border space-y-3">
+        <h3 class="font-bold text-slate-800 border-b pb-2 text-sm"><i class="fa-solid fa-lock-open text-indigo-600"></i> تحديث كلمة المرور</h3>
+        <div class="space-y-3 text-xs">
+          <div>
+            <label class="block font-semibold text-slate-600 mb-1">كلمة المرور الجديدة</label>
+            <input type="password" id="modal-new-pass" placeholder="••••••" class="w-full p-2.5 border rounded-xl outline-none">
+          </div>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button onclick="closeChangePasswordModal()" class="bg-slate-200 text-slate-700 text-xs font-bold px-4 py-2 rounded-xl">إلغاء</button>
+          <button onclick="submitChangePassword()" class="bg-indigo-600 text-white text-xs font-bold px-4 py-2 rounded-xl">تحديث الآن</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- نافذة تعديل بيانات المدير (للمشرف العام) -->
+    <div id="edit-manager-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl p-5 sm:p-6 w-full max-w-md shadow-2xl border space-y-3">
+        <h3 class="font-bold text-slate-800 border-b pb-2 text-sm"><i class="fa-solid fa-user-pen text-indigo-600"></i> تعديل بيانات المعهد والمدير</h3>
+        <div class="space-y-3 text-xs">
+          <input type="hidden" id="edit-mgr-username-orig">
+          <div>
+            <label class="block font-semibold text-slate-600 mb-1">اسم المدير الكامل</label>
+            <input type="text" id="edit-mgr-name" class="w-full p-2.5 border rounded-xl outline-none font-bold">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-600 mb-1">كلمة المرور الجديدة</label>
+            <input type="text" id="edit-mgr-pass" placeholder="اتركها فارغة إن لم ترد تغييرها" class="w-full p-2.5 border rounded-xl outline-none">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-600 mb-1">اسم المعهد</label>
+            <input type="text" id="edit-mgr-center" class="w-full p-2.5 border rounded-xl outline-none font-bold">
+          </div>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button onclick="closeEditManagerModal()" class="bg-slate-200 text-slate-700 text-xs font-bold px-4 py-2 rounded-xl">إلغاء</button>
+          <button onclick="submitEditManager()" class="bg-indigo-600 text-white text-xs font-bold px-4 py-2 rounded-xl">حفظ التعديلات</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- نافذة تعديل التقرير من المشرف العام -->
+    <div id="edit-report-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl p-5 sm:p-6 w-full max-w-2xl shadow-2xl border space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
+        <div class="flex justify-between items-center border-b pb-2">
+          <h3 class="font-bold text-slate-800 text-xs sm:text-sm"><i class="fa-solid fa-pen-to-square text-indigo-600"></i> تعديل نص التقرير للمدير</h3>
+          <button onclick="closeEditReportModal()" class="text-slate-400 hover:text-slate-600 text-lg">×</button>
+        </div>
+        <textarea id="edit-report-textarea" rows="6" class="w-full p-3 border rounded-xl text-xs outline-none focus:ring-1 focus:ring-indigo-500 font-medium leading-relaxed"></textarea>
+        <div class="flex justify-end gap-2 pt-2 border-t flex-wrap">
+          <button onclick="closeEditReportModal()" class="bg-slate-200 text-slate-700 text-xs font-bold px-4 py-2 rounded-xl">إلغاء</button>
+          <button onclick="saveUpdatedReportFromAdmin()" class="bg-indigo-600 text-white font-bold text-xs px-5 py-2 rounded-xl"><i class="fa-solid fa-floppy-disk"></i> حفظ التعديل</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- نافذة تنزيل مهام وأسئلة المدراء من المشرف العام -->
+    <div id="admin-tasks-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl p-5 sm:p-6 w-full max-w-3xl shadow-2xl border space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
+        <div class="flex justify-between items-center border-b pb-2">
+          <h3 class="font-bold text-slate-800 text-xs sm:text-sm"><i class="fa-solid fa-tasks text-amber-500"></i> تنزيل وتخصيص الأسئلة والمهام الموحدة للمدراء</h3>
+          <button onclick="closeAdminTasksModal()" class="text-slate-400 hover:text-slate-600 text-lg">×</button>
+        </div>
+        <p class="text-[11px] sm:text-xs text-slate-500">صياغة الأسئلة واختيار نوع الإجابة المطلوبة من المدراء:</p>
+        <div id="admin-custom-tasks-inputs" class="space-y-3"></div>
+        <div class="flex justify-between items-center pt-2 border-t flex-wrap gap-2">
+          <button onclick="addNewAdminTaskRow()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-1 border border-indigo-200">
+            <i class="fa-solid fa-plus"></i> إضافة سؤال جديد للمدير
+          </button>
+          <div class="flex gap-2">
+            <button onclick="closeAdminTasksModal()" class="bg-slate-200 text-slate-700 text-xs font-bold px-4 py-2 rounded-xl">إلغاء</button>
+            <button onclick="saveAdminManagerTasks()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs px-5 py-2 rounded-xl"><i class="fa-solid fa-floppy-disk"></i> تعميم الأسئلة</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1. شاشة تسجيل الدخول -->
+    <div id="login-view" class="max-w-md mx-auto bg-white rounded-2xl shadow-2xl border border-slate-200/60 p-6 sm:p-8 mt-6 sm:mt-12">
+      <div class="text-center mb-6">
+        <div class="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl shadow-inner">
+          <i class="fa-solid fa-shield-halved"></i>
+        </div>
+        <h2 class="text-xl sm:text-2xl font-bold text-slate-800">بوابة الدخول الموحدة</h2>
+        <p class="text-xs text-slate-400 mt-1">نظام إدارة المعاهد القرآنية المغلقة</p>
+      </div>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-2">اسم المستخدم</label>
+          <input type="text" id="username" class="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-xs sm:text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-2">كلمة المرور</label>
+          <input type="password" id="password" class="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-xs sm:text-sm">
+        </div>
+        <button onclick="attemptLogin()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-xs sm:text-sm">
+          تحقق والولوج للنظام <i class="fa-solid fa-arrow-left"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- 2. واجهة مشرف المتابعة -->
+    <div id="supervisor-view" class="space-y-6 hidden">
+      <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+        <div class="flex justify-between items-center border-b pb-2 flex-wrap gap-2">
+          <h3 class="font-bold text-sm text-indigo-900 flex items-center gap-2">
+            <i class="fa-solid fa-user-plus text-emerald-600"></i> أولاً: إضافة طالب جديد للمعهد وترحيله
+          </h3>
+          <span class="text-[11px] text-slate-400 font-semibold">يتم توليد كود تلقائي وترحيل الطالب مباشرة</span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          <div class="sm:col-span-2">
+            <label class="block text-[11px] font-bold text-slate-600 mb-1">اسم الطالب الكامل:</label>
+            <input type="text" id="sup-initial-std-name" placeholder="أدخل اسم الطالب الكامل هنا..." class="w-full p-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 font-bold">
+          </div>
+          <div class="flex items-end">
+            <button onclick="addNewStudentDirectly()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl transition-all shadow flex items-center justify-center gap-2">
+              <i class="fa-solid fa-cloud-arrow-up"></i> إضافة وترحيل الطالب
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+        <div class="flex justify-between items-center border-b pb-2 flex-wrap gap-2">
+          <h3 class="font-bold text-sm text-indigo-900 flex items-center gap-2">
+            <i class="fa-solid fa-bookmark text-amber-500"></i> ثانياً: تحديد وتحديث مستوى حفظ الطالب (أين وصل)
+          </h3>
+          <span class="text-[11px] text-indigo-600 font-bold" id="sup-std-count-display">0 طلاب مسجلين</span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          <div>
+            <label class="block text-[11px] font-bold text-slate-600 mb-1">اختر الطالب من القائمة:</label>
+            <select id="sup-progress-std-select" onchange="onStudentProgressSelectChange()" class="w-full p-2.5 border rounded-xl font-bold bg-slate-50 outline-none focus:ring-2 focus:ring-amber-500 text-indigo-950">
+              <option value="">-- اختر الطالب لتحديث مستواه --</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-slate-600 mb-1">أين وصل بالحفظ (الجزء / السورة / الآية):</label>
+            <input type="text" id="sup-progress-val-input" placeholder="مثال: سورة النساء آية 20 / الجزء 4" class="w-full p-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-amber-500 font-bold text-amber-900 bg-amber-50/30">
+          </div>
+          <div class="flex items-end">
+            <button onclick="submitStudentProgressUpdate()" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-2.5 px-4 rounded-xl transition-all shadow flex items-center justify-center gap-2">
+              <i class="fa-solid fa-floppy-disk"></i> تحديث وترحيل مستوى الحفظ
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-4 pt-3 border-t">
+          <h4 class="text-xs font-bold text-slate-700 mb-2">قائمة طلاب حلقتك ومستويات حفظهم:</h4>
+          <div id="supervisor-students-management-table" class="space-y-2 max-h-48 overflow-y-auto custom-scrollbar text-xs">
+            <p class="text-slate-400 text-center py-2">جاري جلب قائمة الطلاب...</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+        <div class="flex items-center gap-2 border-b pb-3 mb-3 text-amber-600 font-bold text-xs sm:text-sm">
+          <i class="fa-solid fa-book-quran text-lg sm:text-xl"></i>
+          <h3>رصد وتسميع الحفظ اليومي للطلاب</h3>
+        </div>
+        
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">اختر الطالب لتسجيل التسميع:</label>
+          <select id="supervisor-student-select" onchange="onStudentSelectChange()" class="w-full sm:w-1/2 p-2.5 border rounded-xl text-xs font-bold bg-slate-50 outline-none focus:ring-2 focus:ring-amber-500">
+            <option value="">-- اختر الطالب --</option>
+          </select>
+
+          <div id="selected-student-form" class="mt-4 p-4 bg-slate-50 border rounded-xl space-y-3 hidden">
+            <span id="selected-student-display-name" class="font-bold text-indigo-900 text-xs block border-b pb-2"></span>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              <div>
+                <label class="text-[11px] text-slate-500 font-semibold block mb-1">رقم الجزء المسمع:</label>
+                <input type="number" id="single-juz" placeholder="1" min="1" max="30" class="w-full p-2 border rounded-lg bg-white font-bold outline-none">
+              </div>
+              <div>
+                <label class="text-[11px] text-slate-500 font-semibold block mb-1">عدد الأخطاء:</label>
+                <input type="number" id="single-err" placeholder="0" min="0" value="0" class="w-full p-2 border rounded-lg bg-white outline-none">
+              </div>
+              <div>
+                <label class="text-[11px] text-slate-500 font-semibold block mb-1">عدد التنبيهات:</label>
+                <input type="number" id="single-prompt" placeholder="0" min="0" value="0" class="w-full p-2 border rounded-lg bg-white outline-none">
+              </div>
+              <div>
+                <label class="text-[11px] text-slate-500 font-semibold block mb-1">المدة (دقائق):</label>
+                <input type="number" id="single-time" placeholder="15" min="1" class="w-full p-2 border rounded-lg bg-white outline-none">
+              </div>
+            </div>
+            <div class="pt-2">
+              <button onclick="submitSelectedStudentRecitation()" class="w-full sm:w-auto bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-2.5 px-6 rounded-xl shadow transition-all text-xs flex items-center justify-center gap-2">
+                <i class="fa-solid fa-paper-plane"></i> اعتماد التسميع وتحديث أين وصل
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+        <div class="flex justify-between items-center border-b pb-3 flex-wrap gap-2">
+          <h3 class="font-bold text-slate-800 text-xs sm:text-sm flex items-center gap-2">
+            <i class="fa-solid fa-magnifying-glass-chart text-indigo-600 text-base sm:text-lg"></i>
+            سجل الأجزاء المحفوظة واستعلام الطلاب
+          </h3>
+          <div class="flex items-center gap-2 w-full sm:w-auto">
+            <select id="search-student-select" onchange="fetchStudentMemorizationHistory()" class="w-full sm:w-auto p-2 border rounded-xl text-xs font-bold bg-slate-50 outline-none focus:ring-2 focus:ring-indigo-500">
+              <option value="">-- قم باختيار الطالب --</option>
+            </select>
+          </div>
+        </div>
+        <div id="student-memorization-history-container" class="text-xs text-slate-500 min-h-[60px] flex items-center justify-center bg-slate-50 rounded-xl p-4 border border-dashed text-center">
+          حدد طالباً من القائمة للبحث وإظهار سجل الأجزاء المحفوظة السابقة
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. واجهة المدير -->
+    <div id="manager-view" class="space-y-6 hidden">
+      <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200 flex justify-between items-center flex-wrap gap-4">
+        <div>
+          <h2 class="text-lg sm:text-xl font-bold text-slate-800"><i class="fa-solid fa-user-tie text-indigo-600"></i> بوابة الإدارة المباشرة للمعهد</h2>
+          <p class="text-xs text-slate-400">إدارة مشرف المتابعة، متابعة مستوى حفظ الطلاب، والتقارير الموحدة</p>
+        </div>
+      </div>
+
+      <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+        <div class="flex justify-between items-center border-b pb-2 flex-wrap gap-2">
+          <h3 class="font-bold text-sm text-indigo-900 flex items-center gap-2">
+            <i class="fa-solid fa-user-shield text-indigo-600"></i> مشرف المتابعة بالمعهد
+          </h3>
+          <span class="text-[11px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded">مسموح بمشرف متابعة واحد فقط</span>
+        </div>
+        
+        <div id="mgr-add-supervisor-form" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+          <input type="text" id="mgr-new-sup-user" placeholder="اسم مستخدم المشرف (Login)" class="p-2.5 border rounded-xl outline-none">
+          <input type="text" id="mgr-new-sup-name" placeholder="اسم المشرف الكامل" class="p-2.5 border rounded-xl outline-none">
+          <input type="password" id="mgr-new-sup-pass" placeholder="كلمة المرور" class="p-2.5 border rounded-xl outline-none">
+          <button onclick="addNewSupervisorByManager()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2.5 rounded-xl transition-all"><i class="fa-solid fa-plus"></i> تعيين المشرف</button>
+        </div>
+
+        <div class="mt-3">
+          <h4 class="text-[11px] font-bold text-slate-600 mb-2">بيانات مشرف المتابعة الحالي:</h4>
+          <div id="manager-supervisors-list-box" class="space-y-1.5 max-h-36 overflow-y-auto custom-scrollbar text-xs"></div>
+        </div>
+      </div>
+
+      <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div class="flex justify-between items-center border-b pb-2 flex-wrap gap-2">
+          <h3 class="font-bold text-sm text-slate-800 flex items-center gap-2">
+            <i class="fa-solid fa-users-viewfinder text-amber-500 text-base"></i> قائمة طلاب المعهد ومستوى حفظ كل طالب (أين وصل)
+          </h3>
+          <span class="text-xs bg-indigo-50 text-indigo-700 font-bold px-3 py-1 rounded-lg" id="manager-students-count-badge">0 طالب</span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-right text-xs">
+            <thead class="bg-slate-100 text-slate-700 font-bold border-b">
+              <tr>
+                <th class="p-2.5">كود الطالب</th>
+                <th class="p-2.5">اسم الطالب</th>
+                <th class="p-2.5">مشرف المتابعة</th>
+                <th class="p-2.5">أين وصل بالحفظ</th>
+                <th class="p-2.5">تاريخ آخر رصد</th>
+              </tr>
+            </thead>
+            <tbody id="manager-students-progress-table" class="divide-y text-slate-700">
+              <tr><td colspan="5" class="text-center py-4 text-slate-400">جاري تحميل بيانات الطلاب...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="mt-4 pt-3 border-t">
+          <h4 class="font-bold text-xs text-indigo-900 mb-2 flex items-center gap-1">
+            <i class="fa-solid fa-book-open text-amber-600"></i> كشف تسميع الطلاب المرفوع اليوم للمدير:
+          </h4>
+          <div id="manager-students-memorization-summary" class="space-y-1.5 max-h-36 overflow-y-auto custom-scrollbar text-[11px]">
+            <p class="text-slate-400 text-center py-2">لا توجد تسميعات قرآنية مرفوعة لهذا اليوم بعد.</p>
+          </div>
+        </div>
+
+        <div class="flex gap-2 items-center pt-2 flex-wrap">
+          <input type="date" id="manager-query-date" class="p-2 border rounded-lg text-xs font-bold w-full sm:w-auto">
+          <button onclick="loadManagerDashboard()" class="w-full sm:w-auto bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs px-4 py-2.5 rounded-lg">استعلام وتحديث</button>
+        </div>
+      </div>
+
+      <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+        <h3 class="font-bold text-sm text-indigo-900 border-b pb-2 flex items-center gap-2">
+          <i class="fa-solid fa-tasks text-amber-500"></i> المهام الأسبوعية للمدير (المحددة من المشرف العام)
+        </h3>
+        <div id="manager-weekly-tasks-list" class="space-y-3 max-h-60 overflow-y-auto custom-scrollbar"></div>
+      </div>
+
+      <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+        <div class="flex justify-between items-center border-b pb-2 flex-wrap gap-2">
+          <h3 class="font-bold text-xs sm:text-sm text-slate-800"><i class="fa-solid fa-file-signature text-emerald-500"></i> صياغة التقرير الإداري المرفوع للمشرف العام</h3>
+          <button onclick="generateAutoWeeklySummary()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs px-3 py-1.5 rounded-xl transition-all flex items-center gap-1">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> 🔄 توليد تلقائي
+          </button>
+        </div>
+        <textarea id="mgr-weekly-summary" rows="6" class="w-full p-3 border rounded-xl text-xs outline-none focus:ring-1 focus:ring-indigo-500 font-medium leading-relaxed" placeholder="اضغط على زر التوليد التلقائي أعلاه..."></textarea>
+        <div class="flex justify-end gap-2 flex-wrap">
+          <button onclick="window.print()" class="w-full sm:w-auto bg-slate-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl"><i class="fa-solid fa-print"></i> طباعة</button>
+          <button onclick="saveAndSendWeeklyReport()" class="w-full sm:w-auto bg-emerald-600 text-white font-bold text-xs px-6 py-2.5 rounded-xl"><i class="fa-solid fa-paper-plane"></i> اعتماد وإرسال</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. واجهة المشرف العام (المركزي) -->
+    <div id="super-admin-view" class="space-y-6 hidden">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 no-print">
+        <div class="bg-gradient-to-br from-indigo-600 to-blue-700 text-white p-4 rounded-xl shadow-md flex justify-between items-center">
+          <div>
+            <p class="text-xs font-semibold opacity-80">إجمالي المدراء</p>
+            <h3 id="stat-total-managers" class="text-2xl font-bold mt-1">0</h3>
+          </div>
+          <i class="fa-solid fa-user-tie text-3xl opacity-30"></i>
+        </div>
+        <div class="bg-gradient-to-br from-emerald-500 to-teal-600 text-white p-4 rounded-xl shadow-md flex justify-between items-center">
+          <div>
+            <p class="text-xs font-semibold opacity-80">التقارير المستلمة</p>
+            <h3 id="stat-received-reports" class="text-2xl font-bold mt-1">0</h3>
+          </div>
+          <i class="fa-solid fa-file-circle-check text-3xl opacity-30"></i>
+        </div>
+        <div class="bg-gradient-to-br from-amber-500 to-orange-600 text-white p-4 rounded-xl shadow-md flex justify-between items-center">
+          <div>
+            <p class="text-xs font-semibold opacity-80">معاهد بها ملاحظات</p>
+            <h3 id="stat-failed-centers" class="text-2xl font-bold mt-1">0</h3>
+          </div>
+          <i class="fa-solid fa-triangle-exclamation text-3xl opacity-30"></i>
+        </div>
+      </div>
+
+      <div class="bg-slate-900 text-white p-5 sm:p-6 rounded-3xl shadow-xl flex justify-between items-center flex-wrap gap-4 no-print">
+        <div>
+          <h2 class="text-xl sm:text-2xl font-bold text-amber-400"><i class="fa-solid fa-crown"></i> لوحة تحكم المشرف المركزي</h2>
+          <p class="text-xs text-slate-400 mt-1">إدارة المعاهد، المدراء، تنزيل وتعيين المهام، ومتابعة الطلاب مركزياً</p>
+        </div>
+        
+        <div class="flex gap-2 flex-wrap w-full sm:w-auto">
+          <button onclick="openAdminTasksModal()" class="w-full sm:w-auto bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold px-4 py-2.5 rounded-xl transition-all shadow flex items-center justify-center gap-2">
+            <i class="fa-solid fa-tasks text-sm"></i> تنزيل وتخصيص مهام المدراء
+          </button>
+          <button onclick="triggerSaturdayArchiveAdmin()" class="w-full sm:w-auto bg-rose-600 hover:bg-rose-700 text-white text-xs font-extrabold px-4 py-2.5 rounded-xl transition-all shadow flex items-center justify-center gap-2" title="أرشفة تقارير الأسبوع">
+            <i class="fa-solid fa-box-archive text-sm"></i> أرشفة وتصفير الأسبوع
+          </button>
+        </div>
+      </div>
+
+      <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div class="flex justify-between items-center border-b pb-2 flex-wrap gap-2">
+          <div>
+            <h3 class="font-bold text-base sm:text-lg text-slate-800"><i class="fa-solid fa-id-card-clip text-indigo-600"></i> بطاقة استعلام طلاب المعاهد ومستوى الحفظ</h3>
+            <p class="text-xs text-slate-400 mt-0.5">اختر المدير لعرض جميع الطلاب التابعين له ومستوى حفظ كل طالب</p>
+          </div>
+          <div class="w-full sm:w-72">
+            <select id="admin-select-manager-for-students" onchange="fetchStudentsForSelectedManager()" class="w-full p-2.5 border rounded-xl text-xs font-bold bg-slate-50 outline-none focus:ring-2 focus:ring-indigo-500 text-indigo-900">
+              <option value="">-- اختر المدير / المعهد لعرض الطلاب --</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="admin-manager-students-container" class="overflow-x-auto">
+          <div class="text-center py-6 text-slate-400 text-xs border border-dashed rounded-xl bg-slate-50">
+            يرجى اختيار مدير معهد من القائمة المنسدلة أعلاه لعرض كشف الطلاب
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+        <h3 class="font-bold text-sm text-indigo-900 border-b pb-2 flex items-center gap-2">
+          <i class="fa-solid fa-landmark text-amber-500"></i> إلحاق وإدارة معهد ومدير جديد
+        </h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+          <input type="text" id="new-mgr-user" placeholder="اسم مستخدم المدير" class="p-2.5 border rounded-xl outline-none">
+          <input type="text" id="new-mgr-name" placeholder="اسم المدير الكامل" class="p-2.5 border rounded-xl outline-none">
+          <input type="password" id="new-mgr-pass" placeholder="كلمة المرور" class="p-2.5 border rounded-xl outline-none">
+          <input type="text" id="new-mgr-center" placeholder="اسم المعهد القرآني" class="p-2.5 border rounded-xl outline-none">
+        </div>
+        <div class="flex justify-end pt-1">
+          <button onclick="submitNewManager()" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl"><i class="fa-solid fa-check"></i> حفظ بيانات المدير</button>
+        </div>
+        <div class="mt-4 pt-3 border-t">
+          <h4 class="text-xs font-bold text-slate-700 mb-2">قائمة المعاهد والمدراء المسجلين بالمنظومة:</h4>
+          <div id="super-admin-managers-list-box" class="space-y-2 max-h-48 overflow-y-auto custom-scrollbar text-xs"></div>
+        </div>
+      </div>
+
+      <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div class="flex justify-between items-center border-b pb-2 flex-wrap gap-2">
+          <div>
+            <h3 class="font-bold text-base sm:text-lg text-slate-800"><i class="fa-solid fa-folder-open text-amber-500"></i> أرشيف الرصد والتقارير الأسبوعية والشاملة</h3>
+            <p class="text-xs text-slate-400 mt-0.5">اختر التاريخ لعرض تقارير جميع المعاهد الواردة فيه</p>
+          </div>
+          <div class="flex gap-2 no-print items-center flex-wrap w-full sm:w-auto">
+            <input type="date" id="admin-filter-date" onchange="loadGeneralAdminDashboard()" class="p-2 border rounded-xl text-xs font-bold w-full sm:w-auto bg-slate-50 outline-none focus:ring-2 focus:ring-indigo-500">
+            <button onclick="loadGeneralAdminDashboard()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-4 py-2 rounded-xl font-bold flex-grow sm:flex-grow-0 transition-all shadow flex items-center justify-center gap-1">
+              <i class="fa-solid fa-filter"></i> تصفية
+            </button>
+            <button onclick="window.print()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold px-4 py-2 rounded-xl flex-grow sm:flex-grow-0 transition-all shadow flex items-center justify-center gap-1">
+              <i class="fa-solid fa-print"></i> طباعة
+            </button>
+          </div>
+        </div>
+        <div id="general-admin-reports-container" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="bg-slate-900 text-slate-400 text-center py-5 text-xs mt-12 border-t border-slate-800 no-print flex flex-col md:flex-row items-center justify-between px-4 sm:px-8 gap-3">
+    <div>إدارة المعاهد القرآنية المغلقة © 2026 - جميع الحقوق محفوظة</div>
+    <div class="flex items-center gap-2 bg-slate-800/80 px-4 py-2 rounded-xl border border-slate-700/60 shadow-inner flex-wrap justify-center">
+      <i class="fa-solid fa-code text-amber-400"></i>
+      <span>تطوير وتصميم: <strong class="text-white">عمر علي</strong></span>
+      <span class="text-slate-500 hidden sm:inline">|</span>
+      <a href="tel:0935828477" class="text-amber-400 hover:text-amber-300 font-bold transition-all flex items-center gap-1" dir="ltr">
+        <i class="fa-solid fa-phone text-[10px]"></i> 0935828477
+      </a>
+    </div>
+  </footer>
+
+  <script>
+    // ══════════════════════════════════════════════════════════════
+    // إعدادات الاتصال بمشروع Supabase
+    // ══════════════════════════════════════════════════════════════
+    const SUPABASE_PROJECT_REF = "reiqhuuzzlydjuidtvww";
+    const SUPABASE_URL = `https://${SUPABASE_PROJECT_REF}.supabase.co`;
+    const SUPABASE_KEY = "sb_publishable_dhyEHq7Nbarc2M8tDm81Xw_c_k2NfWn";
+
+    const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let currentUser = JSON.parse(localStorage.getItem('institute_system_user')) || null;
+    let myStudentsCache = [];
+    let currentManagerDataCache = null;
+    let currentGeneralAdminTasksCache = [];
+    let editingReportTarget = null;
+    let adminTaskCount = 0;
+    let globalAdminManagersCache = [];
+
+    window.onload = function() {
+      const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+      const todayStr = (new Date(Date.now() - tzoffset)).toISOString().split('T')[0];
+      if(document.getElementById('admin-filter-date')) document.getElementById('admin-filter-date').value = todayStr;
+      checkPersistedLogin();
+    };
+
+    function showLoader() { document.getElementById('main-loader').classList.remove('hidden'); }
+    function hideLoader() { document.getElementById('main-loader').classList.add('hidden'); }
+
+    function goToHome() {
+      window.location.reload();
+    }
+
+    function openAdminTasksModal() { 
+      initAdminTasksInputs();
+      document.getElementById('admin-tasks-modal').classList.remove('hidden'); 
+    }
+    function closeAdminTasksModal() { document.getElementById('admin-tasks-modal').classList.add('hidden'); }
+    function closeEditReportModal() { document.getElementById('edit-report-modal').classList.add('hidden'); }
+
+    function checkPersistedLogin() {
+      if (currentUser) {
+        setLoggedInUI(currentUser);
+        routeUserToView(currentUser);
+      } else {
+        showView('login-view');
+      }
+    }
+
+    function setLoggedInUI(user) {
+      document.getElementById('header-user-info').innerText = `المستخدم: ${user.fullName} (${user.username}) | المستوى: ${user.role} ${user.center ? '['+user.center+']' : ''}`;
+      document.getElementById('logout-btn').classList.remove('hidden');
+      document.getElementById('change-pass-btn').classList.remove('hidden');
+    }
+
+    async function attemptLogin() {
+      const user = document.getElementById('username').value.trim();
+      const pass = document.getElementById('password').value.trim();
+      if (!user || !pass) { alert("ادخل اسم المستخدم وكلمة المرور!"); return; }
+      
+      showLoader();
+      try {
+        const { data, error } = await db
+          .from('users')
+          .select('*')
+          .ilike('username', user)
+          .eq('password', pass)
+          .maybeSingle();
+
+        hideLoader();
+
+        if (error || !data) {
+          alert("اسم المستخدم أو كلمة المرور غير صحيحة");
+        } else {
+          currentUser = {
+            username: data.username,
+            role: data.role,
+            fullName: data.full_name || data.username,
+            parent: data.parent_username || "",
+            center: data.center_name || ""
+          };
+          localStorage.setItem('institute_system_user', JSON.stringify(currentUser));
+          setLoggedInUI(currentUser);
+          routeUserToView(currentUser);
+        }
+      } catch (err) {
+        hideLoader();
+        console.error(err);
+        alert("حدث خطأ أثناء الاتصال بقاعدة البيانات: " + err.message);
+      }
+    }
+
+    function logout() {
+      localStorage.removeItem('institute_system_user');
+      currentUser = null;
+      document.getElementById('header-user-info').innerText = "يرجى تسجيل الدخول";
+      document.getElementById('logout-btn').classList.add('hidden');
+      document.getElementById('change-pass-btn').classList.add('hidden');
+      showView('login-view');
+    }
+
+    function showView(viewId) {
+      document.getElementById('login-view').classList.add('hidden');
+      document.getElementById('supervisor-view').classList.add('hidden');
+      document.getElementById('manager-view').classList.add('hidden');
+      document.getElementById('super-admin-view').classList.add('hidden');
+      document.getElementById(viewId).classList.remove('hidden');
+    }
+
+    function routeUserToView(user) {
+      if (user.role === "مشرف") {
+        showView('supervisor-view');
+        loadStudentsForSupervisor();
+      } else if (user.role === "مدير") {
+        showView('manager-view');
+        const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+        document.getElementById('manager-query-date').value = (new Date(Date.now() - tzoffset)).toISOString().split('T')[0];
+        loadManagerDashboard();
+      } else if (user.role === "مشرف عام") {
+        showView('super-admin-view');
+        loadGeneralAdminDashboard();
+      }
+    }
+
+    function openChangePasswordModal() { document.getElementById('password-modal').classList.remove('hidden'); }
+    function closeChangePasswordModal() { document.getElementById('password-modal').classList.add('hidden'); }
+    
+    async function submitChangePassword() {
+      const newPass = document.getElementById('modal-new-pass').value.trim();
+      if(!newPass) { alert("أدخل كلمة المرور الجديدة!"); return; }
+      
+      showLoader();
+      const { error } = await db
+        .from('users')
+        .update({ password: newPass })
+        .eq('username', currentUser.username);
+      hideLoader();
+
+      if(!error) {
+        alert("تم تحديث كلمة المرور بنجاح.");
+        closeChangePasswordModal();
+        document.getElementById('modal-new-pass').value = "";
+      } else {
+        alert("فشل التحديث: " + error.message);
+      }
+    }
+
+    // ─── دوال المشرف ───────────────────────────
+
+    function generateUniqueStudentCode() {
+      const rnd = Math.floor(1000 + Math.random() * 9000);
+      return `STD-${Date.now().toString().slice(-4)}${rnd}`;
+    }
+
+    async function addNewStudentDirectly() {
+      const name = document.getElementById('sup-initial-std-name').value.trim();
+      if(!name) { alert("يرجى إدخال اسم الطالب أولاً!"); return; }
+
+      const autoId = generateUniqueStudentCode();
+      const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+      const todayStr = (new Date(Date.now() - tzoffset)).toISOString().split('T')[0];
+
+      showLoader();
+      const { error } = await db.from('students').insert([{
+        student_id: autoId,
+        name: name,
+        supervisor_username: currentUser.username,
+        manager_username: (currentUser.parent && currentUser.parent.trim()) ? currentUser.parent.trim() : null,
+        supervisor_full_name: currentUser.fullName,
+        center_name: currentUser.center || "",
+        current_progress: "مبتدئ / قيد التحديد",
+        last_update: todayStr
+      }]);
+      hideLoader();
+
+      if(!error) {
+        alert(`تم ترحيل وحفظ الطالب بنجاح!
+الكود التلقائي: (${autoId})
+الاسم: (${name})`);
+        document.getElementById('sup-initial-std-name').value = "";
+        await loadStudentsForSupervisor();
+        document.getElementById('sup-progress-std-select').value = autoId;
+        onStudentProgressSelectChange();
+      } else {
+        alert("فشل في ترحيل الطالب: " + error.message);
+      }
+    }
+
+    function onStudentProgressSelectChange() {
+      const stdId = document.getElementById('sup-progress-std-select').value;
+      const progressInput = document.getElementById('sup-progress-val-input');
+
+      if (!stdId) {
+        progressInput.value = "";
+        return;
+      }
+
+      const std = myStudentsCache.find(s => s.student_id == stdId);
+      if (std) {
+        progressInput.value = (std.current_progress && std.current_progress !== "مبتدئ / قيد التحديد") ? std.current_progress : "";
+      }
+    }
+
+    async function submitStudentProgressUpdate() {
+      const stdId = document.getElementById('sup-progress-std-select').value;
+      const progressVal = document.getElementById('sup-progress-val-input').value.trim();
+
+      if(!stdId) { alert("يرجى اختيار الطالب من القائمة أولاً!"); return; }
+      if(!progressVal) { alert("يرجى كتابة أين وصل الطالب بالحفظ!"); return; }
+
+      const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+      const todayStr = (new Date(Date.now() - tzoffset)).toISOString().split('T')[0];
+
+      showLoader();
+      const { error } = await db.from('students').update({
+        current_progress: progressVal,
+        last_update: todayStr
+      }).eq('student_id', stdId);
+      hideLoader();
+
+      if(!error) {
+        alert("تم تحديث وترحيل مستوى حفظ الطالب بنجاح!");
+        loadStudentsForSupervisor();
+      } else {
+        alert("فشل تحديث مستوى الحفظ: " + error.message);
+      }
+    }
+
+    async function loadStudentsForSupervisor() {
+      showLoader();
+      const { data: students, error } = await db
+        .from('students')
+        .select('*')
+        .eq('supervisor_username', currentUser.username)
+        .order('name', { ascending: true });
+      hideLoader();
+
+      if (error) { console.error(error); return; }
+      myStudentsCache = students || [];
+
+      const progressSelect = document.getElementById('sup-progress-std-select');
+      const supSelect = document.getElementById('supervisor-student-select');
+      const searchSelect = document.getElementById('search-student-select');
+      const tableBox = document.getElementById('supervisor-students-management-table');
+      const countBadge = document.getElementById('sup-std-count-display');
+      
+      if(countBadge) countBadge.innerText = `${myStudentsCache.length} طلاب مسجلين`;
+      
+      progressSelect.innerHTML = '<option value="">-- اختر الطالب لتحديث مستواه --</option>';
+      supSelect.innerHTML = '<option value="">-- اختر الطالب --</option>';
+      searchSelect.innerHTML = '<option value="">-- قم باختيار الطالب --</option>';
+      tableBox.innerHTML = "";
+
+      if(myStudentsCache.length === 0) {
+        tableBox.innerHTML = '<p class="text-slate-400 text-center py-2">لا يوجد طلاب مسجلين بحلقتك بعد. أضف طالباً من الأعلى.</p>';
+      }
+
+      myStudentsCache.forEach(std => {
+        progressSelect.innerHTML += `<option value="${std.student_id}">${std.name} (${std.student_id})</option>`;
+        supSelect.innerHTML += `<option value="${std.student_id}">${std.name} (${std.student_id})</option>`;
+        searchSelect.innerHTML += `<option value="${std.student_id}">${std.name} (${std.student_id})</option>`;
+
+        tableBox.innerHTML += `
+          <div class="flex justify-between items-center p-2.5 bg-slate-50 border rounded-xl flex-wrap gap-2">
+            <div>
+              <span class="font-bold text-slate-800">${std.name}</span>
+              <span class="text-slate-400 text-[10px]">(${std.student_id})</span>
+              <span class="text-amber-800 bg-amber-100 font-bold px-2 py-0.5 rounded text-[10px] mr-1">أين وصل: ${std.current_progress}</span>
+            </div>
+            <div class="flex gap-1.5">
+              <button onclick="openEditStudentModal('${std.student_id}', '${std.name}', '${std.current_progress}')" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold px-2.5 py-1 rounded text-xs"><i class="fa-solid fa-pen"></i> تعديل</button>
+              <button onclick="deleteStudentBySupervisor('${std.student_id}')" class="bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold px-2.5 py-1 rounded text-xs"><i class="fa-solid fa-trash-can"></i> حذف</button>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    function openEditStudentModal(id, name, progress) {
+      document.getElementById('edit-std-id').value = id;
+      document.getElementById('edit-std-name').value = name;
+      document.getElementById('edit-std-progress').value = (progress && progress !== 'مبتدئ / قيد التحديد') ? progress : "";
+      document.getElementById('edit-student-modal').classList.remove('hidden');
+    }
+
+    function closeEditStudentModal() {
+      document.getElementById('edit-student-modal').classList.add('hidden');
+    }
+
+    async function submitEditStudent() {
+      const id = document.getElementById('edit-std-id').value;
+      const name = document.getElementById('edit-std-name').value.trim();
+      const progress = document.getElementById('edit-std-progress').value.trim();
+
+      if(!name) { alert("أدخل اسم الطالب!"); return; }
+
+      const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+      const todayStr = (new Date(Date.now() - tzoffset)).toISOString().split('T')[0];
+
+      showLoader();
+      const { error } = await db.from('students').update({
+        name: name,
+        current_progress: progress || "مبتدئ / قيد التحديد",
+        last_update: todayStr
+      }).eq('student_id', id);
+      hideLoader();
+
+      if(!error) {
+        alert("تم تحديث بيانات ومستوى حفظ الطالب بنجاح!");
+        closeEditStudentModal();
+        loadStudentsForSupervisor();
+      } else {
+        alert("فشل التعديل: " + error.message);
+      }
+    }
+
+    async function deleteStudentBySupervisor(studentId) {
+      if(!confirm(`هل أنت متأكد من حذف الطالب ذو الكود (${studentId})؟`)) return;
+
+      showLoader();
+      const { error } = await db.from('students').delete().eq('student_id', studentId);
+      hideLoader();
+
+      if(!error) {
+        alert("تم حذف الطالب بنجاح.");
+        loadStudentsForSupervisor();
+      } else {
+        alert("فشل حذف الطالب: " + error.message);
+      }
+    }
+
+    function onStudentSelectChange() {
+      const stdId = document.getElementById('supervisor-student-select').value;
+      const formDiv = document.getElementById('selected-student-form');
+      const nameDisp = document.getElementById('selected-student-display-name');
+
+      if (!stdId) {
+        formDiv.classList.add('hidden');
+        return;
+      }
+
+      const std = myStudentsCache.find(s => s.student_id == stdId);
+      if (std) {
+        nameDisp.innerText = `التسميع للطالب: ${std.name} (كود: ${std.student_id}) - المستوى السابق: [${std.current_progress}]`;
+        document.getElementById('single-juz').value = "";
+        document.getElementById('single-err').value = "0";
+        document.getElementById('single-prompt').value = "0";
+        document.getElementById('single-time').value = "";
+        formDiv.classList.remove('hidden');
+      }
+    }
+
+    async function submitSelectedStudentRecitation() {
+      const stdId = document.getElementById('supervisor-student-select').value;
+      if(!stdId) { alert("اختر الطالب أولاً من القائمة المنسدلة!"); return; }
+
+      const std = myStudentsCache.find(s => s.student_id == stdId);
+      const juz = parseInt(document.getElementById('single-juz').value.trim());
+      const errors = parseInt(document.getElementById('single-err').value) || 0;
+      const prompts = parseInt(document.getElementById('single-prompt').value) || 0;
+      const minutes = parseInt(document.getElementById('single-time').value) || 0;
+
+      if(!juz || juz < 1 || juz > 30) {
+        alert("يرجى كتابة رقم جزء صحيح بين 1 و 30!");
+        return;
+      }
+
+      const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+      const date = (new Date(Date.now() - tzoffset)).toISOString().split('T')[0];
+
+      showLoader();
+      const { error: logErr } = await db.from('memorization_logs').insert([{
+        log_date: date,
+        student_id: std.student_id,
+        student_name: std.name,
+        supervisor_name: currentUser.fullName,
+        manager_username: (currentUser.parent && currentUser.parent.trim()) ? currentUser.parent.trim() : null,
+        juz_number: juz,
+        errors_count: errors,
+        prompts_count: prompts,
+        duration_minutes: minutes
+      }]);
+
+      if(!logErr) {
+        await db.from('students').update({
+          current_progress: `الجزء ${juz}`,
+          last_update: date
+        }).eq('student_id', std.student_id);
+      }
+      hideLoader();
+
+      if(!logErr) {
+        alert(`تم اعتماد التسميع وتحديث أين وصل للطالب (${std.name}) بنجاح!`);
+        document.getElementById('supervisor-student-select').value = "";
+        onStudentSelectChange();
+        loadStudentsForSupervisor();
+      } else {
+        alert("فشل تسجيل التسميع: " + logErr.message);
+      }
+    }
+
+    async function fetchStudentMemorizationHistory() {
+      const studentId = document.getElementById('search-student-select').value;
+      const container = document.getElementById('student-memorization-history-container');
+      
+      if(!studentId) {
+        container.innerHTML = "حدد طالباً من القائمة للبحث وإظهار سجل الأجزاء المحفوظة السابقة";
+        return;
+      }
+
+      showLoader();
+      const { data: history, error } = await db
+        .from('memorization_logs')
+        .select('*')
+        .eq('student_id', studentId)
+        .order('log_date', { ascending: false });
+      hideLoader();
+
+      if(error || !history || history.length === 0) {
+        container.innerHTML = `<span class="text-rose-500 font-bold">لا يوجد سجل أجزاء محفوظة لهذا الطالب حتى الآن.</span>`;
+        return;
+      }
+
+      let html = `<div class="w-full space-y-2 text-right">`;
+      html += `<p class="font-bold text-indigo-900 border-b pb-1 mb-2">سجل الأجزاء المحفوظة للطالب (${history[0].student_name}):</p>`;
+      html += `<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">`;
+      
+      history.forEach(item => {
+        html += `
+          <div class="bg-white p-2.5 rounded-xl border border-slate-200 text-xs shadow-xs">
+            <div class="flex justify-between font-bold text-amber-700 mb-1">
+              <span>📖 الجزء: (${item.juz_number})</span>
+              <span class="text-slate-400 text-[10px]">${item.log_date}</span>
+            </div>
+            <div class="text-[11px] text-slate-600 flex justify-between flex-wrap gap-1">
+              <span>الأخطاء: ${item.errors_count} | تنبيهات: ${item.prompts_count}</span>
+              <span>المدة: ${item.duration_minutes} دقيقة</span>
+            </div>
+          </div>
+        `;
+      });
+      html += `</div></div>`;
+      container.innerHTML = html;
+    }
+
+    // ─── دوال المدير ───────────────────────────
+
+    async function addNewSupervisorByManager() {
+      const user = document.getElementById('mgr-new-sup-user').value.trim();
+      const name = document.getElementById('mgr-new-sup-name').value.trim();
+      const pass = document.getElementById('mgr-new-sup-pass').value.trim();
+
+      if(!user || !name || !pass) {
+        alert("أدخل كافة بيانات المشرف الجديد!");
+        return;
+      }
+
+      showLoader();
+      const { count } = await db
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+        .eq('parent_username', currentUser.username)
+        .eq('role', 'مشرف');
+
+      if(count >= 1) {
+        hideLoader();
+        alert("عذراً، يحق لمدير المعهد إضافة مشرف متابعة واحد فقط. يرجى حذف المشرف الحالي أولاً لإضافة غيره.");
+        return;
+      }
+
+      const { error } = await db.from('users').insert([{
+        username: user,
+        password: pass,
+        role: "مشرف",
+        full_name: name,
+        parent_username: currentUser.username ? currentUser.username.trim() : null,
+        center_name: currentUser.center || ""
+      }]);
+      hideLoader();
+
+      if(!error) {
+        alert("تم إضافة مشرف المتابعة للمعهد بنجاح!");
+        document.getElementById('mgr-new-sup-user').value = "";
+        document.getElementById('mgr-new-sup-name').value = "";
+        document.getElementById('mgr-new-sup-pass').value = "";
+        loadManagerDashboard();
+      } else {
+        alert("فشل في إضافة المشرف: " + error.message);
+      }
+    }
+
+    async function deleteSupervisorByManager(supUsername) {
+      showLoader();
+      const { count: studentCount } = await db
+        .from('students')
+        .select('*', { count: 'exact', head: true })
+        .eq('supervisor_username', supUsername);
+      hideLoader();
+
+      const confirmMsg = `⚠️ تحذير إداري عاجل:\n\nهل أنت متأكد من حذف المشرف (${supUsername})؟\n\n📌 تنبيه هام: المشرف لديه (${studentCount || 0}) من الطلاب المسجلين.\nسيؤدي حذف المشرف إلى حذف كافة هؤلاء الطلاب مع كافة سجلات التسميع الخاصة بهم تلقائياً.\n\nهل ترغب بالمتابعة وتأكيد الحذف؟`;
+
+      if (!confirm(confirmMsg)) return;
+
+      showLoader();
+      const { error } = await db.from('users').delete().eq('username', supUsername);
+      hideLoader();
+
+      if (!error) {
+        alert(`تم حذف المشرف بنجاح، ومسح كافة بياناته المرتبطة.`);
+        loadManagerDashboard();
+      } else {
+        alert("فشل في حذف المشرف: " + error.message);
+      }
+    }
+
+    async function loadManagerDashboard() {
+      const qDate = document.getElementById('manager-query-date').value;
+      showLoader();
+
+      const { data: supervisors } = await db
+        .from('users')
+        .select('*')
+        .eq('parent_username', currentUser.username)
+        .eq('role', 'مشرف');
+
+      const { data: students } = await db
+        .from('students')
+        .select('*')
+        .eq('manager_username', currentUser.username)
+        .order('name', { ascending: true });
+
+      const { data: memorizationToday } = await db
+        .from('memorization_logs')
+        .select('*')
+        .eq('manager_username', currentUser.username)
+        .eq('log_date', qDate);
+
+      const { data: tasksData } = await db
+        .from('general_admin_tasks')
+        .select('tasks_json')
+        .limit(1);
+
+      hideLoader();
+
+      currentManagerDataCache = {
+        supervisors: supervisors || [],
+        students: students || [],
+        memorizationToday: memorizationToday || [],
+        generalAdminTasks: tasksData && tasksData[0] ? tasksData[0].tasks_json : []
+      };
+
+      const supListBox = document.getElementById('manager-supervisors-list-box');
+      const addForm = document.getElementById('mgr-add-supervisor-form');
+
+      if(supListBox) {
+        supListBox.innerHTML = "";
+        if (currentManagerDataCache.supervisors.length > 0) {
+          if (addForm) addForm.classList.add('hidden');
+          currentManagerDataCache.supervisors.forEach(s => {
+            supListBox.innerHTML += `
+              <div class="flex justify-between items-center p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg">
+                <span class="font-bold text-emerald-950"><i class="fa-solid fa-user-check"></i> ${s.full_name} (${s.username})</span>
+                <button onclick="deleteSupervisorByManager('${s.username}')" class="text-rose-600 hover:text-rose-800 font-bold px-2 py-1"><i class="fa-solid fa-trash-can"></i> حذف المشرف</button>
+              </div>
+            `;
+          });
+        } else {
+          if (addForm) addForm.classList.remove('hidden');
+          supListBox.innerHTML = `<p class="text-slate-400 text-center py-2">لا يوجد مشرف متابعة مضاف للمعهد حالياً. يمكنك إضافة مشرف واحد أعلاه.</p>`;
+        }
+      }
+
+      const stdTable = document.getElementById('manager-students-progress-table');
+      const stdBadge = document.getElementById('manager-students-count-badge');
+      stdTable.innerHTML = "";
+      stdBadge.innerText = `${currentManagerDataCache.students.length} طالب`;
+
+      if(currentManagerDataCache.students.length > 0) {
+        currentManagerDataCache.students.forEach(st => {
+          stdTable.innerHTML += `
+            <tr class="hover:bg-slate-50 transition-colors">
+              <td class="p-2.5 font-bold text-slate-500">${st.student_id}</td>
+              <td class="p-2.5 font-bold text-indigo-950">${st.name}</td>
+              <td class="p-2.5 text-slate-600">${st.supervisor_full_name || st.supervisor_username}</td>
+              <td class="p-2.5"><span class="bg-amber-100 text-amber-900 font-bold px-2 py-1 rounded-md text-[11px]">${st.current_progress}</span></td>
+              <td class="p-2.5 text-slate-400 text-[11px]">${st.last_update || '-'}</td>
+            </tr>
+          `;
+        });
+      } else {
+        stdTable.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-slate-400">لا يوجد طلاب مسجلين بالمعهد حتى الآن.</td></tr>`;
+      }
+
+      const mgrTasksContainer = document.getElementById('manager-weekly-tasks-list');
+      mgrTasksContainer.innerHTML = "";
+      currentGeneralAdminTasksCache = currentManagerDataCache.generalAdminTasks || [];
+
+      if (currentGeneralAdminTasksCache.length > 0) {
+        currentGeneralAdminTasksCache.forEach((taskObj, i) => {
+          const tText = typeof taskObj === 'object' ? taskObj.text : taskObj;
+          const tType = typeof taskObj === 'object' ? taskObj.type : 'boolean';
+
+          if (tType === 'number_type') {
+            mgrTasksContainer.innerHTML += `
+              <div class="p-3 bg-slate-50 border rounded-xl space-y-2 text-xs">
+                <span class="font-bold text-slate-800 block">سؤال ${i + 1}: ${tText}</span>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <label class="text-[10px] text-slate-500 font-semibold block">العدد المنجز:</label>
+                    <input type="number" id="mgr-num-val-${i}" placeholder="مثال: 10" min="0" class="w-full p-2 border rounded-lg text-xs outline-none bg-white font-bold">
+                  </div>
+                  <div>
+                    <label class="text-[10px] text-slate-500 font-semibold block">النوع والتفاصيل:</label>
+                    <input type="text" id="mgr-num-type-${i}" placeholder="مثال: دروس دينية" class="w-full p-2 border rounded-lg text-xs outline-none bg-white">
+                  </div>
+                </div>
+              </div>
+            `;
+          } else {
+            mgrTasksContainer.innerHTML += `
+              <div class="p-3 bg-slate-50 border rounded-xl space-y-2 text-xs">
+                <div class="flex justify-between items-center flex-wrap gap-2">
+                  <span class="font-bold text-slate-800">مهمة إدارية ${i + 1}: ${tText}</span>
+                  <div class="flex gap-3 font-bold">
+                    <label class="flex items-center gap-1 cursor-pointer text-emerald-700">
+                      <input type="radio" name="mgr-task-opt-${i}" value="نعم" checked onchange="toggleManagerReasonInTask(${i}, 'نعم')" class="mgr-task-status-radio"> نعم (تمت)
+                    </label>
+                    <label class="flex items-center gap-1 cursor-pointer text-rose-600">
+                      <input type="radio" name="mgr-task-opt-${i}" value="لا" onchange="toggleManagerReasonInTask(${i}, 'لا')" class="mgr-task-status-radio"> لا (لم تتم)
+                    </label>
+                  </div>
+                </div>
+                <div id="mgr-task-reason-div-${i}" class="hidden space-y-2">
+                  <input type="text" id="mgr-task-reason-${i}" placeholder="اكتب سبب التقصير بالتفصيل..." class="w-full p-2 border border-rose-200 rounded-lg text-xs outline-none bg-white">
+                  <input type="text" id="mgr-task-time-${i}" placeholder="حدد وقت وساعات التقصير..." class="w-full p-2 border border-rose-200 rounded-lg text-xs outline-none bg-white">
+                </div>
+              </div>
+            `;
+          }
+        });
+      }
+
+      const memContainer = document.getElementById('manager-students-memorization-summary');
+      memContainer.innerHTML = "";
+
+      if(currentManagerDataCache.memorizationToday.length > 0) {
+        currentManagerDataCache.memorizationToday.forEach(stMem => {
+          memContainer.innerHTML += `
+            <div class="p-2 bg-slate-50 border rounded-lg flex justify-between items-center font-medium flex-wrap gap-1">
+              <div>
+                <span class="font-bold text-slate-800">${stMem.student_name}</span>
+                <span class="text-slate-400 text-[10px]">(${stMem.student_id})</span>
+              </div>
+              <div>
+                <span class="bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded text-[10px]">الجزء: ${stMem.juz_number} | أخطاء: ${stMem.errors_count}</span>
+              </div>
+            </div>
+          `;
+        });
+      } else {
+        memContainer.innerHTML = `<p class="text-slate-400 text-center py-2">لا توجد تسميعات مرفوعة اليوم.</p>`;
+      }
+    }
+
+    function toggleManagerReasonInTask(index, val) {
+      const reasonDiv = document.getElementById(`mgr-task-reason-div-${index}`);
+      if (val === 'لا') {
+        reasonDiv.classList.remove('hidden');
+      } else {
+        reasonDiv.classList.add('hidden');
+        document.getElementById(`mgr-task-reason-${index}`).value = "";
+        document.getElementById(`mgr-task-time-${index}`).value = "";
+      }
+    }
+
+    function generateAutoWeeklySummary() {
+      if (!currentManagerDataCache) {
+        alert("انقر على زر (استعلام وتحديث) أولاً لجلب البيانات.");
+        return;
+      }
+
+      const qDate = document.getElementById('manager-query-date').value;
+      const allMgrTasks = currentGeneralAdminTasksCache;
+      let summaryLines = [];
+
+      allMgrTasks.forEach((taskObj, i) => {
+        const tText = typeof taskObj === 'object' ? taskObj.text : taskObj;
+        const tType = typeof taskObj === 'object' ? taskObj.type : 'boolean';
+
+        if (tType === 'number_type') {
+          const numVal = document.getElementById(`mgr-num-val-${i}`) ? document.getElementById(`mgr-num-val-${i}`).value : "0";
+          const numType = document.getElementById(`mgr-num-type-${i}`) ? document.getElementById(`mgr-num-type-${i}`).value.trim() : "غير محدد";
+          summaryLines.push(`• ${tText} 👈 العدد: (${numVal}) | التفاصيل: (${numType})`);
+        } else {
+          const radios = document.getElementsByName(`mgr-task-opt-${i}`);
+          let ans = "نعم";
+          for (const r of radios) {
+            if (r.checked) { ans = r.value; break; }
+          }
+
+          if (ans === "لا") {
+            const reasonInp = document.getElementById(`mgr-task-reason-${i}`);
+            const timeInp = document.getElementById(`mgr-task-time-${i}`);
+            const reasonText = (reasonInp && reasonInp.value.trim()) ? reasonInp.value.trim() : "لم يذكر السبب";
+            const timeText = (timeInp && timeInp.value.trim()) ? timeInp.value.trim() : "لم يحدد الوقت";
+            summaryLines.push(`• ${tText} 👈 🛑 (لا) | السبب: (${reasonText}) | الوقت: (${timeText})`);
+          } else {
+            summaryLines.push(`• ${tText} 👈 ✅ (نعم)`);
+          }
+        }
+      });
+
+      let autoText = `تقرير إجابات ومهام مدير المعهد [ ${currentUser.fullName} ]\n`;
+      autoText += `المعهد: ${currentUser.center || 'المعهد المركزي'}\n`;
+      autoText += `التاريخ: ${qDate}\n`;
+      autoText += `إجمالي عدد الطلاب المسجلين بالمعهد: ${currentManagerDataCache.students ? currentManagerDataCache.students.length : 0}\n`;
+      autoText += `--------------------------------------------------\n\n`;
+
+      if (summaryLines.length > 0) {
+        autoText += summaryLines.join("\n\n") + "\n\n";
+      }
+
+      document.getElementById('mgr-weekly-summary').value = autoText;
+    }
+
+    async function saveAndSendWeeklyReport() {
+      const date = document.getElementById('manager-query-date').value;
+      const summaryText = document.getElementById('mgr-weekly-summary').value.trim();
+
+      if(!summaryText) {
+        alert("يرجى كتابة التقرير أو توليده تلقائياً قبل الإرسال!");
+        return;
+      }
+
+      showLoader();
+      const { data: existing } = await db
+        .from('manager_logs')
+        .select('id')
+        .eq('manager_username', currentUser.username)
+        .eq('log_date', date)
+        .maybeSingle();
+
+      let opError = null;
+      if(existing) {
+        const { error } = await db.from('manager_logs').update({
+          weekly_manager_tasks_summary: summaryText,
+          weekly_summary: summaryText,
+          is_sent_to_general: "نعم",
+          status: "نشط"
+        }).eq('id', existing.id);
+        opError = error;
+      } else {
+        const { error } = await db.from('manager_logs').insert([{
+          log_date: date,
+          manager_username: currentUser.username,
+          manager_name: currentUser.fullName,
+          attendance_status: "منضبط",
+          weekly_manager_tasks_summary: summaryText,
+          weekly_summary: summaryText,
+          is_sent_to_general: "نعم",
+          status: "نشط"
+        }]);
+        opError = error;
+      }
+
+      hideLoader();
+      if(!opError) {
+        alert("تم إرسال التقرير الشامل للمشرف العام بنجاح!");
+      } else {
+        alert("فشل الإرسال: " + opError.message);
+      }
+    }
+
+    // ─── دوال المشرف العام ───────────────────────────
+
+    async function initAdminTasksInputs() {
+      showLoader();
+      const { data } = await db
+        .from('general_admin_tasks')
+        .select('tasks_json')
+        .eq('admin_username', currentUser.username)
+        .maybeSingle();
+      hideLoader();
+
+      const container = document.getElementById('admin-custom-tasks-inputs');
+      container.innerHTML = "";
+      adminTaskCount = 0;
+
+      let tasks = (data && data.tasks_json && data.tasks_json.length > 0) 
+        ? data.tasks_json 
+        : [
+            { text: "هل تم الدوام 7 ساعات كاملة دون نوم؟", type: "boolean" },
+            { text: "كم عدد الدروس التي أقيمت خلال الأسبوع وما نوعها؟", type: "number_type" }
+          ];
+
+      tasks.forEach((t) => {
+        const textVal = typeof t === 'object' ? t.text : t;
+        const typeVal = typeof t === 'object' ? t.type : 'boolean';
+        addAdminTaskRowUI(textVal, typeVal);
+      });
+    }
+
+    function addAdminTaskRowUI(textVal = "", typeVal = "boolean") {
+      adminTaskCount++;
+      const container = document.getElementById('admin-custom-tasks-inputs');
+      const rowId = `admin-task-row-${adminTaskCount}`;
+      
+      const div = document.createElement('div');
+      div.id = rowId;
+      div.className = "p-3 bg-slate-50 border rounded-xl space-y-2 text-xs relative";
+      div.innerHTML = `
+        <div class="flex justify-between items-center gap-2 flex-wrap">
+          <span class="font-bold text-slate-700">السؤال ${adminTaskCount}:</span>
+          <select id="admin-task-type-${adminTaskCount}" class="p-1.5 border rounded-lg bg-white font-bold text-indigo-900 outline-none text-xs">
+            <option value="boolean" ${typeVal === 'boolean' ? 'selected' : ''}>سؤال بنعم / لا</option>
+            <option value="number_type" ${typeVal === 'number_type' ? 'selected' : ''}>سؤال إحصائي (عدد وتفاصيل)</option>
+          </select>
+          <button onclick="removeAdminTaskRow('${rowId}')" class="text-rose-500 hover:text-rose-700 px-2 py-1 font-bold text-xs" title="حذف السؤال"><i class="fa-solid fa-trash-can"></i></button>
+        </div>
+        <input type="text" id="admin-task-inp-${adminTaskCount}" value="${textVal}" placeholder="اكتب نص السؤال المطلوب من كافة المدراء..." class="admin-task-input-field p-2 border rounded-lg text-xs w-full outline-none focus:ring-1 focus:ring-amber-500 bg-white">
+      `;
+      container.appendChild(div);
+    }
+
+    function addNewAdminTaskRow() { addAdminTaskRowUI("", "boolean"); }
+    function removeAdminTaskRow(rowId) { const row = document.getElementById(rowId); if(row) row.remove(); }
+
+    async function saveAdminManagerTasks() {
+      const tasks = [];
+      const rows = document.querySelectorAll('#admin-custom-tasks-inputs > div');
+      
+      rows.forEach((row) => {
+        const textInp = row.querySelector('.admin-task-input-field');
+        const typeSel = row.querySelector('select');
+        if(textInp && textInp.value.trim() !== "") {
+          tasks.push({
+            text: textInp.value.trim(),
+            type: typeSel ? typeSel.value : "boolean"
+          });
+        }
+      });
+
+      if(tasks.length === 0) {
+        alert("أدخل سؤالاً واحداً على الأقل للمدراء!");
+        return;
+      }
+
+      showLoader();
+      const { error } = await db.from('general_admin_tasks').upsert({
+        admin_username: currentUser.username,
+        tasks_json: tasks
+      });
+      hideLoader();
+
+      if(!error) {
+        alert("تم حفظ وتعميم أسئلة ومهام المدراء الموحدة بنجاح!");
+        closeAdminTasksModal();
+      } else {
+        alert("فشل التعميم: " + error.message);
+      }
+    }
+
+    async function loadGeneralAdminDashboard() {
+      const filterInput = document.getElementById('admin-filter-date');
+      const fDate = filterInput ? filterInput.value.trim() : "";
+      
+      showLoader();
+      const { data: managers } = await db
+        .from('users')
+        .select('*')
+        .eq('role', 'مدير')
+        .order('full_name', { ascending: true });
+
+      let query = db.from('manager_logs').select('*');
+      if (fDate) {
+        query = query.eq('log_date', fDate);
+      }
+      const { data: reports } = await query;
+      hideLoader();
+
+      globalAdminManagersCache = managers || [];
+      const filteredReports = reports || [];
+      const failedCount = filteredReports.filter(r => (r.weekly_summary || "").indexOf('🛑') > -1).length;
+
+      document.getElementById('stat-total-managers').innerText = globalAdminManagersCache.length;
+      document.getElementById('stat-received-reports').innerText = filteredReports.length;
+      document.getElementById('stat-failed-centers').innerText = failedCount;
+
+      const adminMgrSelect = document.getElementById('admin-select-manager-for-students');
+      if(adminMgrSelect) {
+        adminMgrSelect.innerHTML = '<option value="">-- اختر المدير / المعهد لعرض الطلاب --</option>';
+        globalAdminManagersCache.forEach(m => {
+          adminMgrSelect.innerHTML += `<option value="${m.username}">${m.full_name} [معهد: ${m.center_name}]</option>`;
+        });
+      }
+
+      const adminMgrListBox = document.getElementById('super-admin-managers-list-box');
+      if(adminMgrListBox) {
+        adminMgrListBox.innerHTML = "";
+        globalAdminManagersCache.forEach(m => {
+          adminMgrListBox.innerHTML += `
+            <div class="flex justify-between items-center p-2.5 bg-slate-50 border rounded-lg flex-wrap gap-1">
+              <div>
+                <span class="font-bold text-slate-800">${m.full_name}</span> 
+                <span class="text-slate-500 text-[11px]">[معهد: ${m.center_name}]</span>
+                <span class="text-slate-400 text-[10px]">(${m.username})</span>
+              </div>
+              <div class="flex gap-1.5">
+                <button onclick="openEditManagerModal('${m.username}', '${m.full_name}', '${m.center_name}')" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold px-2.5 py-1 rounded text-xs"><i class="fa-solid fa-pen-to-square"></i> تعديل</button>
+                <button onclick="deleteManagerByAdmin('${m.username}')" class="bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold px-2.5 py-1 rounded text-xs"><i class="fa-solid fa-trash-can"></i> حذف</button>
+              </div>
+            </div>
+          `;
+        });
+      }
+
+      const container = document.getElementById('general-admin-reports-container');
+      container.innerHTML = "";
+
+      let processedManagerUsers = [];
+
+      if (filteredReports.length > 0) {
+        filteredReports.forEach(rep => {
+          processedManagerUsers.push(rep.manager_username.toLowerCase());
+          let cardColor = "bg-slate-50 border-slate-200";
+          let statusBadge = "bg-emerald-100 text-emerald-800";
+          let statusText = "مكتمل المنظومة";
+
+          if((rep.weekly_summary || "").indexOf('🛑') > -1) {
+            cardColor = "bg-rose-50/60 border-rose-200";
+            statusBadge = "bg-rose-100 text-rose-800 font-bold";
+            statusText = "يوجد ملاحظات/تقصير";
+          }
+
+          const safeSummaryText = (rep.weekly_summary || "").replace(/`/g, "\\`").replace(/'/g, "\\'").replace(/"/g, "&quot;");
+
+          container.innerHTML += `
+            <div class="p-4 sm:p-5 rounded-xl border space-y-3 relative print-card ${cardColor}">
+              <div class="flex justify-between items-center border-b pb-1 flex-wrap gap-1">
+                <span class="font-bold text-indigo-900 text-xs sm:text-sm"><i class="fa-solid fa-landmark"></i> تقرير معهد المدير: ${rep.manager_name}</span>
+                <span class="text-[10px] text-slate-400 font-bold">${rep.log_date}</span>
+              </div>
+              <p class="text-xs text-slate-600 font-medium">حالة الانضباط: <span class="px-2 py-0.5 rounded text-[10px] ${statusBadge}">${statusText}</span></p>
+              
+              <div class="bg-white p-3 rounded-lg border text-xs text-slate-700 whitespace-pre-line leading-relaxed shadow-inner font-medium">
+                ${rep.weekly_summary}
+              </div>
+
+              <div class="flex justify-end gap-2 pt-2 border-t no-print flex-wrap">
+                <button onclick="openEditReportModal('${rep.manager_username}', '${rep.log_date}', \`${safeSummaryText}\`)" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-bold border border-indigo-200 flex items-center gap-1">
+                  <i class="fa-solid fa-pen-to-square"></i> تعديل
+                </button>
+                <button onclick="archiveSingleReportFromAdmin('${rep.manager_username}', '${rep.log_date}')" class="bg-amber-50 hover:bg-amber-100 text-amber-800 px-3 py-1.5 rounded-lg text-xs font-bold border border-amber-200 flex items-center gap-1">
+                  <i class="fa-solid fa-box-archive"></i> أرشفة
+                </button>
+                <button onclick="deleteReportFromAdmin('${rep.manager_username}', '${rep.log_date}')" class="bg-rose-50 hover:bg-rose-100 text-rose-700 px-3 py-1.5 rounded-lg text-xs font-bold border border-rose-200 flex items-center gap-1">
+                  <i class="fa-solid fa-trash-can"></i> حذف
+                </button>
+              </div>
+            </div>
+          `;
+        });
+      }
+
+      globalAdminManagersCache.forEach(mgrObj => {
+        if (!processedManagerUsers.includes(mgrObj.username.toLowerCase())) {
+          container.innerHTML += `
+            <div class="p-4 sm:p-5 rounded-xl border border-rose-300 bg-rose-100/50 space-y-2 print-card">
+              <div class="flex justify-between items-center border-b border-rose-200 pb-1 flex-wrap gap-1">
+                <span class="font-bold text-rose-900 text-xs sm:text-sm"><i class="fa-solid fa-circle-exclamation text-rose-600"></i> معهد المدير: ${mgrObj.full_name} [${mgrObj.center_name}]</span>
+                <span class="text-[10px] text-rose-500 font-bold">${fDate || 'التاريخ المختار'}</span>
+              </div>
+              <p class="text-xs text-rose-700 font-bold">لم يقم المعهد برفع التقرير لهذا التاريخ.</p>
+            </div>
+          `;
+        }
+      });
+    }
+
+    async function fetchStudentsForSelectedManager() {
+      const mgrUser = document.getElementById('admin-select-manager-for-students').value;
+      const container = document.getElementById('admin-manager-students-container');
+
+      if (!mgrUser) {
+        container.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs border border-dashed rounded-xl bg-slate-50">يرجى اختيار مدير معهد من القائمة المنسدلة أعلاه لعرض كشف الطلاب</div>`;
+        return;
+      }
+
+      showLoader();
+      const { data: students, error } = await db
+        .from('students')
+        .select('*')
+        .eq('manager_username', mgrUser)
+        .order('name', { ascending: true });
+      hideLoader();
+
+      if (error || !students || students.length === 0) {
+        container.innerHTML = `<div class="text-center py-6 text-rose-600 font-bold text-xs border border-rose-200 rounded-xl bg-rose-50">لا يوجد طلاب مسجلين تحت إشراف هذا المدير حالياً.</div>`;
+        return;
+      }
+
+      let html = `
+        <table class="w-full text-right text-xs">
+          <thead class="bg-slate-100 text-slate-700 font-bold border-b">
+            <tr>
+              <th class="p-2.5">كود الطالب</th>
+              <th class="p-2.5">اسم الطالب</th>
+              <th class="p-2.5">مشرف المتابعة</th>
+              <th class="p-2.5">أين وصل بالحفظ</th>
+              <th class="p-2.5">تاريخ التحديث</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y text-slate-700">
+      `;
+
+      students.forEach(st => {
+        html += `
+          <tr class="hover:bg-slate-50">
+            <td class="p-2.5 font-bold text-slate-500">${st.student_id}</td>
+            <td class="p-2.5 font-bold text-indigo-950">${st.name}</td>
+            <td class="p-2.5 text-slate-600">${st.supervisor_full_name || st.supervisor_username}</td>
+            <td class="p-2.5"><span class="bg-amber-100 text-amber-900 font-bold px-2.5 py-1 rounded-md text-[11px]">${st.current_progress}</span></td>
+            <td class="p-2.5 text-slate-400 text-[11px]">${st.last_update || '-'}</td>
+          </tr>
+        `;
+      });
+
+      html += `</tbody></table>`;
+      container.innerHTML = html;
+    }
+
+    async function submitNewManager() {
+      const user = document.getElementById('new-mgr-user').value.trim();
+      const name = document.getElementById('new-mgr-name').value.trim();
+      const pass = document.getElementById('new-mgr-pass').value.trim();
+      const center = document.getElementById('new-mgr-center').value.trim();
+      if(!user || !name || !pass || !center) { alert("أكمل كافة بيانات المدير والمعهد!"); return; }
+      
+      showLoader();
+      const { error } = await db.from('users').insert([{
+        username: user,
+        full_name: name,
+        password: pass,
+        role: "مدير",
+        center_name: center,
+        parent_username: (currentUser && currentUser.username && currentUser.username.trim()) ? currentUser.username.trim() : null
+      }]);
+      hideLoader();
+
+      if(!error) {
+        alert("تم إضافة المعهد والمدير بنجاح.");
+        document.getElementById('new-mgr-user').value = "";
+        document.getElementById('new-mgr-name').value = "";
+        document.getElementById('new-mgr-pass').value = "";
+        document.getElementById('new-mgr-center').value = "";
+        loadGeneralAdminDashboard();
+      } else {
+        alert("فشل الحفظ: " + error.message);
+      }
+    }
+
+    async function deleteManagerByAdmin(mgrUsername) {
+      if(!confirm(`هل أنت متأكد من حذف المدير (${mgrUsername}) ومعهدِه؟`)) return;
+
+      showLoader();
+      const { error } = await db.from('users').delete().eq('username', mgrUsername);
+      hideLoader();
+
+      if(!error) {
+        alert("تم حذف المدير بنجاح.");
+        loadGeneralAdminDashboard();
+      } else {
+        alert("فشل الحذف: " + error.message);
+      }
+    }
+
+    function openEditManagerModal(username, fullName, center) {
+      document.getElementById('edit-mgr-username-orig').value = username;
+      document.getElementById('edit-mgr-name').value = fullName;
+      document.getElementById('edit-mgr-center').value = center;
+      document.getElementById('edit-mgr-pass').value = "";
+      document.getElementById('edit-manager-modal').classList.remove('hidden');
+    }
+
+    function closeEditManagerModal() {
+      document.getElementById('edit-manager-modal').classList.add('hidden');
+    }
+
+    async function submitEditManager() {
+      const username = document.getElementById('edit-mgr-username-orig').value.trim();
+      const fullName = document.getElementById('edit-mgr-name').value.trim();
+      const password = document.getElementById('edit-mgr-pass').value.trim();
+      const center = document.getElementById('edit-mgr-center').value.trim();
+
+      if(!fullName || !center) { alert("يرجى إكمال الحقول الأساسية!"); return; }
+
+      const updateData = { full_name: fullName, center_name: center };
+      if(password) updateData.password = password;
+
+      showLoader();
+      const { error } = await db.from('users').update(updateData).eq('username', username);
+      hideLoader();
+
+      if(!error) {
+        alert("تم تعديل بيانات المدير والمعهد بنجاح!");
+        closeEditManagerModal();
+        loadGeneralAdminDashboard();
+      } else {
+        alert("فشل التعديل: " + error.message);
+      }
+    }
+
+    async function openEditReportModal(managerUsername, date, currentText) {
+      editingReportTarget = { managerUsername, date };
+      document.getElementById('edit-report-textarea').value = currentText;
+      document.getElementById('edit-report-modal').classList.remove('hidden');
+    }
+
+    async function saveUpdatedReportFromAdmin() {
+      if(!editingReportTarget) return;
+      const newSummary = document.getElementById('edit-report-textarea').value.trim();
+      
+      showLoader();
+      const { error } = await db
+        .from('manager_logs')
+        .update({ weekly_summary: newSummary, weekly_manager_tasks_summary: newSummary })
+        .eq('manager_username', editingReportTarget.managerUsername)
+        .eq('log_date', editingReportTarget.date);
+      hideLoader();
+
+      if(!error) {
+        alert("تم تعديل نص التقرير بنجاح!");
+        closeEditReportModal();
+        loadGeneralAdminDashboard();
+      } else {
+        alert("فشل التعديل: " + error.message);
+      }
+    }
+
+    async function archiveSingleReportFromAdmin(managerUsername, date) {
+      if(!confirm("هل أنت متأكد من نقل هذا التقرير إلى الأرشيف؟")) return;
+      showLoader();
+      const { error } = await db
+        .from('manager_logs')
+        .update({ status: "مؤرشف" })
+        .eq('manager_username', managerUsername)
+        .eq('log_date', date);
+      hideLoader();
+
+      if(!error) {
+        alert("تم أرشفة التقرير بنجاح.");
+        loadGeneralAdminDashboard();
+      } else {
+        alert("فشل الأرشفة: " + error.message);
+      }
+    }
+
+    async function deleteReportFromAdmin(managerUsername, date) {
+      if(!confirm("هل أنت متأكد من حذف هذا التقرير نهائياً؟")) return;
+      showLoader();
+      const { error } = await db
+        .from('manager_logs')
+        .delete()
+        .eq('manager_username', managerUsername)
+        .eq('log_date', date);
+      hideLoader();
+
+      if(!error) {
+        alert("تم حذف التقرير بنجاح.");
+        loadGeneralAdminDashboard();
+      } else {
+        alert("فشل الحذف: " + error.message);
+      }
+    }
+
+    async function triggerSaturdayArchiveAdmin() {
+      if(!confirm("تنبيه: سيؤدي هذا الإجراء لأرشفة كافة التقارير الأسبوعية وتصفير اللوحة. هل ترغب بالاستمرار؟")) return;
+      showLoader();
+      const { error } = await db
+        .from('manager_logs')
+        .update({ status: "مؤرشف" })
+        .eq('status', 'نشط');
+      hideLoader();
+
+      if(!error) {
+        alert("تمت الأرشفة بنجاح!");
+        loadGeneralAdminDashboard();
+      } else {
+        alert("فشلت الأرشفة: " + error.message);
+      }
+    }
+  </script>
+</body>
+</html>
