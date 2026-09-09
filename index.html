@@ -8,6 +8,8 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- مكتبة SheetJS لدعم استيراد وتصدير ملفات Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     body { font-family: 'Cairo', sans-serif; overflow-x: hidden; }
     .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -173,7 +175,7 @@
           <label class="block text-xs font-semibold text-slate-600 mb-2">كلمة المرور</label>
           <input type="password" id="password" class="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-xs sm:text-sm">
         </div>
-        <button onclick="attemptLogin()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-xs sm:text-sm">
+        <button onclick="attemptLogin()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-xs sm:text-sm cursor-pointer">
           تحقق والولوج للنظام <i class="fa-solid fa-arrow-left"></i>
         </button>
       </div>
@@ -207,7 +209,13 @@
           <h3 class="font-bold text-sm text-indigo-900 flex items-center gap-2">
             <i class="fa-solid fa-bookmark text-amber-500"></i> ثانياً: تحديد وتحديث مستوى حفظ الطالب (أين وصل)
           </h3>
-          <span class="text-[11px] text-indigo-600 font-bold" id="sup-std-count-display">0 طلاب مسجلين</span>
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] text-indigo-600 font-bold" id="sup-std-count-display">0 طلاب مسجلين</span>
+            <!-- زر تصدير طلاب المشرف إلى إكسل -->
+            <button onclick="exportSupervisorStudentsToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1 px-3 rounded-lg text-[11px] transition-all shadow flex items-center gap-1">
+              <i class="fa-solid fa-file-excel"></i> تصدير الطلاب (Excel)
+            </button>
+          </div>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
@@ -301,6 +309,16 @@
         <div>
           <h2 class="text-lg sm:text-xl font-bold text-slate-800"><i class="fa-solid fa-user-tie text-indigo-600"></i> بوابة الإدارة المباشرة للمعهد</h2>
           <p class="text-xs text-slate-400">إدارة مشرف المتابعة، متابعة مستوى حفظ الطلاب، والتقارير الموحدة</p>
+        </div>
+        <!-- أزرار إكسل للمدير -->
+        <div class="flex gap-2 flex-wrap items-center">
+          <button onclick="exportManagerStudentsToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition-all shadow flex items-center gap-1.5">
+            <i class="fa-solid fa-file-excel"></i> تصدير طلاب المعهد
+          </button>
+          <label class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition-all shadow flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-file-import"></i> استيراد طلاب المعهد
+            <input type="file" accept=".xlsx, .xls" class="hidden" onchange="importDataFromExcel(event)">
+          </label>
         </div>
       </div>
 
@@ -416,13 +434,24 @@
       <div class="bg-slate-900 text-white p-5 sm:p-6 rounded-3xl shadow-xl flex justify-between items-center flex-wrap gap-4 no-print">
         <div>
           <h2 class="text-xl sm:text-2xl font-bold text-amber-400"><i class="fa-solid fa-crown"></i> لوحة تحكم المشرف المركزي</h2>
-          <p class="text-xs text-slate-400 mt-1">إدارة المعاهد، المدراء، تنزيل وتعيين المهام، ومتابعة الطلاب مركزياً</p>
+          <p class="text-xs text-slate-400 mt-1">إدارة المعاهد، المدراء، تنزيل وتعيين المهام، وتصدير واستيراد البيانات الشاملة</p>
         </div>
         
         <div class="flex gap-2 flex-wrap w-full sm:w-auto">
+          <!-- أزرار إكسل الخاصة بالمشرف العام -->
+          <button onclick="exportAllDatabaseToExcel()" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold px-4 py-2.5 rounded-xl transition-all shadow flex items-center justify-center gap-2">
+            <i class="fa-solid fa-file-excel text-sm"></i> تصدير المنظومة كاملة (Excel)
+          </button>
+          
+          <label class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold px-4 py-2.5 rounded-xl transition-all shadow flex items-center justify-center gap-2 cursor-pointer">
+            <i class="fa-solid fa-file-import text-sm"></i> استيراد ملف (Excel)
+            <input type="file" id="import-excel-file" accept=".xlsx, .xls" class="hidden" onchange="importDataFromExcel(event)">
+          </label>
+
           <button onclick="openAdminTasksModal()" class="w-full sm:w-auto bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold px-4 py-2.5 rounded-xl transition-all shadow flex items-center justify-center gap-2">
             <i class="fa-solid fa-tasks text-sm"></i> تنزيل وتخصيص مهام المدراء
           </button>
+          
           <button onclick="triggerSaturdayArchiveAdmin()" class="w-full sm:w-auto bg-rose-600 hover:bg-rose-700 text-white text-xs font-extrabold px-4 py-2.5 rounded-xl transition-all shadow flex items-center justify-center gap-2" title="أرشفة تقارير الأسبوع">
             <i class="fa-solid fa-box-archive text-sm"></i> أرشفة وتصفير الأسبوع
           </button>
@@ -677,9 +706,7 @@
       hideLoader();
 
       if(!error) {
-        alert(`تم ترحيل وحفظ الطالب بنجاح!
-الكود التلقائي: (${autoId})
-الاسم: (${name})`);
+        alert(`تم ترحيل وحفظ الطالب بنجاح!\nالكود التلقائي: (${autoId})\nالاسم: (${name})`);
         document.getElementById('sup-initial-std-name').value = "";
         await loadStudentsForSupervisor();
         document.getElementById('sup-progress-std-select').value = autoId;
@@ -1691,6 +1718,202 @@
       } else {
         alert("فشلت الأرشفة: " + error.message);
       }
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // دوال الاستيراد والتصدير من وإلى Excel (XLSX)
+    // ══════════════════════════════════════════════════════════════
+
+    // 1. تصدير كامل قاعدة البيانات بكل الجداول (للمشرف العام)
+    async function exportAllDatabaseToExcel() {
+      showLoader();
+      try {
+        const [usersRes, studentsRes, logsRes, mgrLogsRes] = await Promise.all([
+          db.from('users').select('*'),
+          db.from('students').select('*'),
+          db.from('memorization_logs').select('*'),
+          db.from('manager_logs').select('*')
+        ]);
+
+        if (usersRes.error || studentsRes.error || logsRes.error || mgrLogsRes.error) {
+          throw new Error("حدث خطأ في جلب بعض البيانات من الخادم.");
+        }
+
+        const wb = XLSX.utils.book_new();
+
+        // ورقة المستخدمين
+        if (usersRes.data && usersRes.data.length > 0) {
+          const wsUsers = XLSX.utils.json_to_sheet(usersRes.data);
+          XLSX.utils.book_append_sheet(wb, wsUsers, "المستخدمون");
+        }
+
+        // ورقة الطلاب
+        if (studentsRes.data && studentsRes.data.length > 0) {
+          const wsStudents = XLSX.utils.json_to_sheet(studentsRes.data);
+          XLSX.utils.book_append_sheet(wb, wsStudents, "الطلاب");
+        }
+
+        // ورقة سجلات التسميع
+        if (logsRes.data && logsRes.data.length > 0) {
+          const wsLogs = XLSX.utils.json_to_sheet(logsRes.data);
+          XLSX.utils.book_append_sheet(wb, wsLogs, "سجلات_التسميع");
+        }
+
+        // ورقة تقارير المعاهد
+        if (mgrLogsRes.data && mgrLogsRes.data.length > 0) {
+          const wsMgrLogs = XLSX.utils.json_to_sheet(mgrLogsRes.data);
+          XLSX.utils.book_append_sheet(wb, wsMgrLogs, "تقارير_المعاهد");
+        }
+
+        const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+        const todayStr = (new Date(Date.now() - tzoffset)).toISOString().split('T')[0];
+        XLSX.writeFile(wb, `نسخة_شاملة_المعاهد_القرآنية_${todayStr}.xlsx`);
+        alert("تم تصدير نسخة Excel المتكاملة بنجاح!");
+      } catch (err) {
+        console.error(err);
+        alert("حدث خطأ أثناء التصدير: " + err.message);
+      } finally {
+        hideLoader();
+      }
+    }
+
+    // 2. تصدير طلاب حلقة المشرف الحالي
+    function exportSupervisorStudentsToExcel() {
+      if (!myStudentsCache || myStudentsCache.length === 0) {
+        alert("لا توجد بيانات طلاب لتصديرها.");
+        return;
+      }
+
+      const exportData = myStudentsCache.map(s => ({
+        "كود الطالب": s.student_id,
+        "اسم الطالب": s.name,
+        "أين وصل بالحفظ": s.current_progress,
+        "المشرف": s.supervisor_full_name || s.supervisor_username,
+        "المعهد": s.center_name,
+        "تاريخ آخر تحديث": s.last_update
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "طلاب الحلقة");
+
+      const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+      const todayStr = (new Date(Date.now() - tzoffset)).toISOString().split('T')[0];
+      XLSX.writeFile(wb, `طلاب_حلقة_${currentUser.username}_${todayStr}.xlsx`);
+    }
+
+    // 3. تصدير طلاب المعهد بالكامل للمدير
+    function exportManagerStudentsToExcel() {
+      if (!currentManagerDataCache || !currentManagerDataCache.students || currentManagerDataCache.students.length === 0) {
+        alert("لا توجد بيانات طلاب لتصديرها.");
+        return;
+      }
+
+      const exportData = currentManagerDataCache.students.map(s => ({
+        "كود الطالب": s.student_id,
+        "اسم الطالب": s.name,
+        "أين وصل بالحفظ": s.current_progress,
+        "المشرف": s.supervisor_full_name || s.supervisor_username,
+        "المعهد": s.center_name,
+        "تاريخ آخر تحديث": s.last_update
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "طلاب المعهد");
+
+      const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+      const todayStr = (new Date(Date.now() - tzoffset)).toISOString().split('T')[0];
+      XLSX.writeFile(wb, `طلاب_معهد_${currentUser.center || currentUser.username}_${todayStr}.xlsx`);
+    }
+
+    // 4. استيراد وقراءة ملف Excel وتحديث قاعدة البيانات (Upsert)
+    async function importDataFromExcel(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      if (!confirm("تنبيه: سيتم قراءة ملف الإكسل وإدراج/تحديث البيانات في النظام. هل تريد الاستمرار؟")) {
+        event.target.value = "";
+        return;
+      }
+
+      showLoader();
+      const reader = new FileReader();
+
+      reader.onload = async function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+
+          let importSummary = [];
+          const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+          const todayStr = (new Date(Date.now() - tzoffset)).toISOString().split('T')[0];
+
+          // أ) استيراد ورقة المستخدمين (إن وجدت وللمشرف العام فقط)
+          const usersSheet = workbook.Sheets["المستخدمون"] || workbook.Sheets["users"];
+          if (usersSheet && currentUser.role === 'مشرف عام') {
+            const usersData = XLSX.utils.sheet_to_json(usersSheet);
+            if (usersData.length > 0) {
+              const { error } = await db.from('users').upsert(usersData, { onConflict: 'username' });
+              if (!error) importSummary.push(`تم ترحيل وتحديث (${usersData.length}) مستخدم/مدير.`);
+              else console.error("خطأ مستخدمين:", error);
+            }
+          }
+
+          // ب) استيراد ورقة الطلاب
+          const studentsSheet = workbook.Sheets["الطلاب"] || workbook.Sheets["students"] || workbook.Sheets["طلاب المعهد"] || workbook.Sheets["طلاب الحلقة"] || workbook.Sheets[workbook.SheetNames[0]];
+          if (studentsSheet) {
+            const rawStudents = XLSX.utils.sheet_to_json(studentsSheet);
+            if (rawStudents.length > 0 && (rawStudents[0].name || rawStudents[0]["اسم الطالب"])) {
+              const formattedStudents = rawStudents.map(st => ({
+                student_id: st.student_id || st["كود الطالب"] || generateUniqueStudentCode(),
+                name: st.name || st["اسم الطالب"],
+                supervisor_username: st.supervisor_username || st["اسم مستخدم المشرف"] || (currentUser.role === 'مشرف' ? currentUser.username : (currentManagerDataCache && currentManagerDataCache.supervisors[0] ? currentManagerDataCache.supervisors[0].username : null)),
+                manager_username: st.manager_username || st["اسم مستخدم المدير"] || (currentUser.role === 'مدير' ? currentUser.username : currentUser.parent || null),
+                supervisor_full_name: st.supervisor_full_name || st["المشرف"] || (currentUser.role === 'مشرف' ? currentUser.fullName : (currentManagerDataCache && currentManagerDataCache.supervisors[0] ? currentManagerDataCache.supervisors[0].full_name : "")),
+                center_name: st.center_name || st["المعهد"] || currentUser.center || "",
+                current_progress: st.current_progress || st["أين وصل بالحفظ"] || "مبتدئ / قيد التحديد",
+                last_update: st.last_update || st["تاريخ آخر تحديث"] || todayStr
+              }));
+
+              const { error } = await db.from('students').upsert(formattedStudents, { onConflict: 'student_id' });
+              if (!error) importSummary.push(`تم استيراد وتحديث (${formattedStudents.length}) طالب بنجاح.`);
+              else console.error("خطأ طلاب:", error);
+            }
+          }
+
+          // ج) استيراد ورقة سجلات التسميع (إن وجدت)
+          const logsSheet = workbook.Sheets["سجلات_التسميع"] || workbook.Sheets["memorization_logs"];
+          if (logsSheet) {
+            const logsData = XLSX.utils.sheet_to_json(logsSheet);
+            if (logsData.length > 0) {
+              const { error } = await db.from('memorization_logs').upsert(logsData);
+              if (!error) importSummary.push(`تم استيراد (${logsData.length}) سجل تسميع.`);
+              else console.error("خطأ تسميع:", error);
+            }
+          }
+
+          hideLoader();
+          event.target.value = "";
+
+          if (importSummary.length > 0) {
+            alert("اكتملت عملية الاستيراد بنجاح:\n\n" + importSummary.join("\n"));
+            if (currentUser.role === 'مشرف عام') loadGeneralAdminDashboard();
+            else if (currentUser.role === 'مدير') loadManagerDashboard();
+            else if (currentUser.role === 'مشرف') loadStudentsForSupervisor();
+          } else {
+            alert("لم يتم العثور على أوراق أو بيانات متوافقة للاستيراد في الملف المرفوع.");
+          }
+
+        } catch (err) {
+          hideLoader();
+          event.target.value = "";
+          console.error(err);
+          alert("حدث خطأ أثناء معالجة ملف الإكسل: " + err.message);
+        }
+      };
+
+      reader.readAsArrayBuffer(file);
     }
   </script>
 </body>
