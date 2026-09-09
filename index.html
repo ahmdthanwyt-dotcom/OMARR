@@ -209,12 +209,16 @@
           <h3 class="font-bold text-sm text-indigo-900 flex items-center gap-2">
             <i class="fa-solid fa-bookmark text-amber-500"></i> ثانياً: تحديد وتحديث مستوى حفظ الطالب (أين وصل)
           </h3>
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 flex-wrap">
             <span class="text-[11px] text-indigo-600 font-bold" id="sup-std-count-display">0 طلاب مسجلين</span>
-            <!-- زر تصدير طلاب المشرف إلى إكسل -->
+            <!-- أزرار إكسل للمشرف -->
             <button onclick="exportSupervisorStudentsToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1 px-3 rounded-lg text-[11px] transition-all shadow flex items-center gap-1">
-              <i class="fa-solid fa-file-excel"></i> تصدير الطلاب (Excel)
+              <i class="fa-solid fa-file-excel"></i> تصدير الطلاب
             </button>
+            <label class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded-lg text-[11px] transition-all shadow flex items-center gap-1 cursor-pointer">
+              <i class="fa-solid fa-file-import"></i> استيراد طلاب
+              <input type="file" accept=".xlsx, .xls" class="hidden" onchange="importDataFromExcel(event)">
+            </label>
           </div>
         </div>
 
@@ -1721,7 +1725,7 @@
     }
 
     // ══════════════════════════════════════════════════════════════
-    // دوال الاستيراد والتصدير من وإلى Excel (XLSX)
+    // دوال الاستيراد والتصدير من وإلى Excel (XLSX) - نسخة متوافقة بالكامل
     // ══════════════════════════════════════════════════════════════
 
     // 1. تصدير كامل قاعدة البيانات بكل الجداول (للمشرف العام)
@@ -1741,25 +1745,21 @@
 
         const wb = XLSX.utils.book_new();
 
-        // ورقة المستخدمين
         if (usersRes.data && usersRes.data.length > 0) {
           const wsUsers = XLSX.utils.json_to_sheet(usersRes.data);
           XLSX.utils.book_append_sheet(wb, wsUsers, "المستخدمون");
         }
 
-        // ورقة الطلاب
         if (studentsRes.data && studentsRes.data.length > 0) {
           const wsStudents = XLSX.utils.json_to_sheet(studentsRes.data);
           XLSX.utils.book_append_sheet(wb, wsStudents, "الطلاب");
         }
 
-        // ورقة سجلات التسميع
         if (logsRes.data && logsRes.data.length > 0) {
           const wsLogs = XLSX.utils.json_to_sheet(logsRes.data);
           XLSX.utils.book_append_sheet(wb, wsLogs, "سجلات_التسميع");
         }
 
-        // ورقة تقارير المعاهد
         if (mgrLogsRes.data && mgrLogsRes.data.length > 0) {
           const wsMgrLogs = XLSX.utils.json_to_sheet(mgrLogsRes.data);
           XLSX.utils.book_append_sheet(wb, wsMgrLogs, "تقارير_المعاهد");
@@ -1777,32 +1777,35 @@
       }
     }
 
-    // 2. تصدير طلاب حلقة المشرف الحالي
+    // 2. تصدير طلاب حلقة المشرف الحالي مع الحفاظ على مفاتيح الربط
     function exportSupervisorStudentsToExcel() {
       if (!myStudentsCache || myStudentsCache.length === 0) {
         alert("لا توجد بيانات طلاب لتصديرها.");
         return;
       }
 
+      // نصدّر بالأسماء الواضحة مع تضمين المعرفات لضمان نجاح إعادة الاستيراد
       const exportData = myStudentsCache.map(s => ({
         "كود الطالب": s.student_id,
         "اسم الطالب": s.name,
         "أين وصل بالحفظ": s.current_progress,
         "المشرف": s.supervisor_full_name || s.supervisor_username,
+        "اسم مستخدم المشرف": s.supervisor_username,
         "المعهد": s.center_name,
+        "اسم مستخدم المدير": s.manager_username || "",
         "تاريخ آخر تحديث": s.last_update
       }));
 
       const ws = XLSX.utils.json_to_sheet(exportData);
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "طلاب الحلقة");
+      XLSX.utils.book_append_sheet(wb, ws, "الطلاب");
 
       const tzoffset = (new Date()).getTimezoneOffset() * 60000;
       const todayStr = (new Date(Date.now() - tzoffset)).toISOString().split('T')[0];
       XLSX.writeFile(wb, `طلاب_حلقة_${currentUser.username}_${todayStr}.xlsx`);
     }
 
-    // 3. تصدير طلاب المعهد بالكامل للمدير
+    // 3. تصدير طلاب المعهد بالكامل للمدير مع الحفاظ على مفاتيح الربط
     function exportManagerStudentsToExcel() {
       if (!currentManagerDataCache || !currentManagerDataCache.students || currentManagerDataCache.students.length === 0) {
         alert("لا توجد بيانات طلاب لتصديرها.");
@@ -1814,25 +1817,27 @@
         "اسم الطالب": s.name,
         "أين وصل بالحفظ": s.current_progress,
         "المشرف": s.supervisor_full_name || s.supervisor_username,
+        "اسم مستخدم المشرف": s.supervisor_username,
         "المعهد": s.center_name,
+        "اسم مستخدم المدير": s.manager_username || currentUser.username,
         "تاريخ آخر تحديث": s.last_update
       }));
 
       const ws = XLSX.utils.json_to_sheet(exportData);
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "طلاب المعهد");
+      XLSX.utils.book_append_sheet(wb, ws, "الطلاب");
 
       const tzoffset = (new Date()).getTimezoneOffset() * 60000;
       const todayStr = (new Date(Date.now() - tzoffset)).toISOString().split('T')[0];
       XLSX.writeFile(wb, `طلاب_معهد_${currentUser.center || currentUser.username}_${todayStr}.xlsx`);
     }
 
-    // 4. استيراد وقراءة ملف Excel وتحديث قاعدة البيانات بنظام المعالجة المباشرة
+    // 4. استيراد وقراءة ملف Excel مع استنتاج وتوافق كامل للأعمدة المصدرة
     async function importDataFromExcel(event) {
       const file = event.target.files[0];
       if (!file) return;
 
-      if (!confirm("تنبيه: سيتم قراءة ملف الإكسل وإدراج/تحديث البيانات في النظام. هل تريد الاستمرار؟")) {
+      if (!confirm("تنبيه: سيتم قراءة ملف الإكسل وإدراج وتحديث البيانات في النظام. هل ترغب بالاستمرار؟")) {
         event.target.value = "";
         return;
       }
@@ -1850,7 +1855,7 @@
           const tzoffset = (new Date()).getTimezoneOffset() * 60000;
           const todayStr = (new Date(Date.now() - tzoffset)).toISOString().split('T')[0];
 
-          // أ) استيراد ورقة المستخدمين (إن وجدت ومسموح للمشرف العام فقط)
+          // أ) استيراد ورقة المستخدمين (إن وجدت وللمشرف العام)
           const usersSheet = workbook.Sheets["المستخدمون"] || workbook.Sheets["users"];
           if (usersSheet && currentUser.role === 'مشرف عام') {
             const rawUsers = XLSX.utils.sheet_to_json(usersSheet);
@@ -1863,9 +1868,9 @@
                   username: uname,
                   password: pwd,
                   role: u.role || u["المستوى"] || "مشرف",
-                  full_name: u.full_name || u["الاسم الكامل"] || uname,
+                  full_name: u.full_name || u["الاسم الكامل"] || u["اسم المشرف الكامل"] || u["اسم المدير الكامل"] || uname,
                   parent_username: (u.parent_username || u["المدير المسؤول"]) ? String(u.parent_username || u["المدير المسؤول"]).trim() : null,
-                  center_name: u.center_name || u["المعهد"] || ""
+                  center_name: u.center_name || u["المعهد"] || u["اسم المعهد"] || ""
                 };
               }).filter(Boolean);
 
@@ -1884,48 +1889,87 @@
                   if (!err) userSuccessCount++;
                   else errorDetails.push(`خطأ بالمستخدم (${usr.username}): ${err.message}`);
                 }
-                if (userSuccessCount > 0) importSummary.push(`تم ترحيل وتحديث (${userSuccessCount}) حساب مستخدم/مدير.`);
+                if (userSuccessCount > 0) importSummary.push(`تم ترحيل وتحديث (${userSuccessCount}) مستخدم/مدير.`);
               }
             }
           }
 
-          // ب) استيراد ورقة الطلاب (الورقة المسماة أو أول ورقة)
-          let targetSheetName = "الطلاب";
-          if (!workbook.Sheets[targetSheetName]) {
-            const possibleNames = ["students", "طلاب المعهد", "طلاب الحلقة"];
-            const found = possibleNames.find(n => workbook.Sheets[n]);
-            targetSheetName = found || workbook.SheetNames[0];
+          // ب) استيراد ورقة الطلاب
+          // البحث عن اسم الورقة المناسبة
+          let targetSheetName = null;
+          const candidateSheetNames = ["الطلاب", "students", "طلاب الحلقة", "طلاب المعهد"];
+          for (let name of candidateSheetNames) {
+            if (workbook.Sheets[name]) { targetSheetName = name; break; }
           }
+          if (!targetSheetName) targetSheetName = workbook.SheetNames[0];
 
           const studentsSheet = workbook.Sheets[targetSheetName];
           if (studentsSheet) {
             const rawStudents = XLSX.utils.sheet_to_json(studentsSheet);
             if (rawStudents.length > 0) {
-              let defaultSupervisor = currentUser.role === 'مشرف' ? currentUser.username : (currentManagerDataCache && currentManagerDataCache.supervisors[0] ? currentManagerDataCache.supervisors[0].username : currentUser.username);
-              let defaultSupervisorName = currentUser.role === 'مشرف' ? currentUser.fullName : (currentManagerDataCache && currentManagerDataCache.supervisors[0] ? currentManagerDataCache.supervisors[0].full_name : "");
-              let defaultManager = currentUser.role === 'مدير' ? currentUser.username : (currentUser.parent ? currentUser.parent.trim() : null);
-              let defaultCenter = currentUser.center || "";
+
+              // تجهيز القيم الافتراضية الذكية بحسب من يقوم بالاستيراد
+              let defaultSupervisor = "";
+              let defaultSupervisorName = "";
+              let defaultManager = null;
+              let defaultCenter = "";
+
+              if (currentUser.role === 'مشرف') {
+                defaultSupervisor = currentUser.username;
+                defaultSupervisorName = currentUser.fullName;
+                defaultManager = currentUser.parent ? currentUser.parent.trim() : null;
+                defaultCenter = currentUser.center || "";
+              } else if (currentUser.role === 'مدير') {
+                defaultManager = currentUser.username;
+                defaultCenter = currentUser.center || "";
+                if (currentManagerDataCache && currentManagerDataCache.supervisors.length > 0) {
+                  defaultSupervisor = currentManagerDataCache.supervisors[0].username;
+                  defaultSupervisorName = currentManagerDataCache.supervisors[0].full_name;
+                }
+              }
 
               let successStdCount = 0;
-              let failStdCount = 0;
 
               for (const st of rawStudents) {
+                // استخراج اسم الطالب
                 const sName = (st.name || st["اسم الطالب"] || "").toString().trim();
-                if (!sName) continue; // تجاهل الصفوف الفارغة
+                if (!sName) continue;
 
+                // استخراج كود الطالب
                 const sId = String(st.student_id || st["كود الطالب"] || generateUniqueStudentCode()).trim();
+
+                // استخراج المشرف
+                let supUser = (st.supervisor_username || st["اسم مستخدم المشرف"] || "").toString().trim();
+                let supName = (st.supervisor_full_name || st["المشرف"] || "").toString().trim();
+                if (!supUser) supUser = defaultSupervisor;
+                if (!supName) supName = defaultSupervisorName || supUser;
+
+                // استخراج المدير
+                let mgrUser = (st.manager_username || st["اسم مستخدم المدير"] || "").toString().trim();
+                if (!mgrUser) mgrUser = defaultManager;
+
+                // استخراج المعهد
+                let centerName = (st.center_name || st["المعهد"] || "").toString().trim();
+                if (!centerName) centerName = defaultCenter;
+
+                // أين وصل بالحفظ
+                let progress = (st.current_progress || st["أين وصل بالحفظ"] || st["أين وصل"] || "مبتدئ / قيد التحديد").toString().trim();
+
+                // التاريخ
+                let lastUpdate = (st.last_update || st["تاريخ آخر تحديث"] || st["تاريخ التحديث"] || todayStr).toString().trim();
+
                 const stdPayload = {
                   student_id: sId,
                   name: sName,
-                  supervisor_username: String(st.supervisor_username || st["اسم مستخدم المشرف"] || defaultSupervisor).trim(),
-                  manager_username: (st.manager_username || st["اسم مستخدم المدير"]) ? String(st.manager_username || st["اسم مستخدم المدير"]).trim() : defaultManager,
-                  supervisor_full_name: st.supervisor_full_name || st["المشرف"] || defaultSupervisorName,
-                  center_name: st.center_name || st["المعهد"] || defaultCenter,
-                  current_progress: st.current_progress || st["أين وصل بالحفظ"] || "مبتدئ / قيد التحديد",
-                  last_update: st.last_update || st["تاريخ آخر تحديث"] || todayStr
+                  supervisor_username: supUser || currentUser.username,
+                  manager_username: mgrUser || null,
+                  supervisor_full_name: supName || supUser || currentUser.fullName,
+                  center_name: centerName,
+                  current_progress: progress,
+                  last_update: lastUpdate
                 };
 
-                // فحص وجود الطالب لتحديثه أو إضافته تجنباً لأخطاء القيود الفريدة
+                // التحقق من وجود الطالب لتحديثه أو إضافته
                 const { data: existStd } = await db.from('students').select('student_id').eq('student_id', sId).maybeSingle();
                 let opErr = null;
 
@@ -1940,12 +1984,13 @@
                 if (!opErr) {
                   successStdCount++;
                 } else {
-                  failStdCount++;
                   errorDetails.push(`الطالب (${sName}): ${opErr.message}`);
                 }
               }
 
-              if (successStdCount > 0) importSummary.push(`تم استيراد وحفظ (${successStdCount}) طالب بنجاح.`);
+              if (successStdCount > 0) {
+                importSummary.push(`تم استيراد وحفظ (${successStdCount}) طالب بنجاح.`);
+              }
             }
           }
 
@@ -1955,9 +2000,10 @@
             const rawLogs = XLSX.utils.sheet_to_json(logsSheet);
             if (rawLogs.length > 0) {
               const cleanLogs = rawLogs.map(l => {
-                if (!l.student_id && !l["كود الطالب"]) return null;
+                const sId = l.student_id || l["كود الطالب"];
+                if (!sId) return null;
                 return {
-                  student_id: String(l.student_id || l["كود الطالب"]).trim(),
+                  student_id: String(sId).trim(),
                   student_name: l.student_name || l["اسم الطالب"] || "",
                   supervisor_name: l.supervisor_name || l["المشرف"] || currentUser.fullName,
                   manager_username: (l.manager_username || l["اسم مستخدم المدير"]) ? String(l.manager_username || l["اسم مستخدم المدير"]).trim() : (currentUser.parent || null),
@@ -1981,14 +2027,14 @@
           event.target.value = "";
 
           if (errorDetails.length > 0) {
-            alert("⚠️ واجه النظام بعض الملاحظات أثناء الاستيراد:\n\n" + errorDetails.slice(0, 5).join("\n") + (errorDetails.length > 5 ? `\n...وغيرها (${errorDetails.length - 5}) أخطاء` : "") + "\n\n" + (importSummary.length > 0 ? "العمليات المنجزة:\n" + importSummary.join("\n") : ""));
+            alert("⚠️ واجهت عملية الاستيراد بعض الأخطاء:\n\n" + errorDetails.slice(0, 5).join("\n") + (errorDetails.length > 5 ? `\n...وغيرها (${errorDetails.length - 5}) أخطاء` : "") + "\n\n" + (importSummary.length > 0 ? "البيانات التي تم استيرادها بنجاح:\n" + importSummary.join("\n") : ""));
           } else if (importSummary.length > 0) {
             alert("✅ اكتملت عملية الاستيراد بنجاح:\n\n" + importSummary.join("\n"));
           } else {
-            alert("لم يتم العثور على أية صفوف أو أسماء طلاب صالحة للاستيراد في الملف المرفوع.");
+            alert("لم يتم العثور على أية صفوف أو أسماء صالحة في ملف الإكسل المرفوع.");
           }
 
-          // إعادة تحميل البيانات وفق الدور الحالي
+          // تحديث الواجهة تلقائياً
           if (currentUser.role === 'مشرف عام') loadGeneralAdminDashboard();
           else if (currentUser.role === 'مدير') loadManagerDashboard();
           else if (currentUser.role === 'مشرف') loadStudentsForSupervisor();
